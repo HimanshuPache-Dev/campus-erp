@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="CampusERP - Intelligent College Management System" />
+    <title>CampusERP - College Management System</title>
+    
+    <!-- Only suppress the specific extension error -->
+    <script>
+      // Store original console.error
+      const originalError = console.error;
+      
+      // Override console.error to filter only the extension error
+      console.error = function filterErrors(...args) {
+        if (args[0] && typeof args[0] === 'string') {
+          // Check if it's the extension error
+          if (args[0].includes('listener indicated an asynchronous response') ||
+              args[0].includes('message channel closed')) {
+            return; // Suppress only this specific error
+          }
+        }
+        // Pass through all other errors
+        originalError.apply(console, args);
+      };
+
+      // Also suppress unhandled promise rejections from extensions
+      window.addEventListener('unhandledrejection', function(event) {
+        if (event.reason && event.reason.message && 
+            event.reason.message.includes('listener indicated an asynchronous response')) {
+          event.preventDefault();
+          return false;
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
