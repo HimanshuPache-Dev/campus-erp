@@ -43,6 +43,30 @@
 
 ## 🚀 Quick Start
 
+### For New Users (Clone from GitHub)
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/HimanshuPache-Dev/campus-erp.git
+cd campus-erp
+
+# 2. Setup Supabase database (see INSTALLATION.md)
+
+# 3. Configure .env files (see INSTALLATION.md)
+
+# 4. Install dependencies
+cd backend && npm install
+cd ../frontend && npm install
+
+# 5. Start servers
+cd backend && npm start        # Terminal 1
+cd frontend && npm run dev     # Terminal 2
+```
+
+📖 **Detailed Instructions**: See [INSTALLATION.md](INSTALLATION.md) or [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
+
+### For Existing Setup
+
 ### 1. Setup Database (2 minutes)
 ```bash
 # Open Supabase SQL Editor and run:
