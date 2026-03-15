@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { studentsAPI, facultyAPI, coursesAPI, attendanceAPI, feesAPI, dashboardAPI } from '../services/api';
+import { supabase } from '../config/supabase';
 import toast from 'react-hot-toast';
 
 export const useDatabaseData = () => {
@@ -27,18 +27,30 @@ export const useDatabaseData = () => {
     try {
       setData(prev => ({ ...prev, loading: true, error: null }));
 
-      const [studentsRes, facultyRes, coursesRes, stats] = await Promise.all([
-        studentsAPI.getAll().catch(() => ({ students: [] })),
-        facultyAPI.getAll().catch(() => ({ faculty: [] })),
-        coursesAPI.getAll().catch(() => ({ courses: [] })),
-        dashboardAPI.getStats().catch(() => ({
-          totalStudents: 0, totalFaculty: 0, totalCourses: 0,
-          pendingFees: 0, presentToday: 0, totalRevenue: 0
-        }))
+      // Fetch data from Supabase
+      const [studentsRes, facultyRes, coursesRes, feesRes] = await Promise.all([
+        supabase.from('users').select('*, student_details(*)').eq('role', 'student').limit(100),
+        supabase.from('users').select('*, faculty_details(*)').eq('role', 'faculty').limit(100),
+        supabase.from('courses').select('*').eq('is_active', true).limit(100),
+        supabase.from('fees').select('*').eq('payment_status', 'pending')
       ]);
-      const students = studentsRes.students || [];
-      const faculty = facultyRes.faculty || [];
-      const courses = coursesRes.courses || [];
+
+      const students = studentsRes.data || [];
+      const faculty = facultyRes.data || [];
+      const courses = coursesRes.data || [];
+      const pendingFees = feesRes.data || [];
+
+      // Calculate stats
+      const totalPendingAmount = pendingFees.reduce((sum, fee) => sum + (fee.amount - (fee.amount_paid || 0)), 0);
+
+      const stats = {
+        totalStudents: students.length,
+        totalFaculty: faculty.length,
+        totalCourses: courses.length,
+        pendingFees: totalPendingAmount,
+        presentToday: 0, // Can be calculated from attendance table
+        totalRevenue: 0 // Can be calculated from fees table
+      };
 
       // Auto-generate alerts from data
       const alerts = [];
@@ -52,11 +64,11 @@ export const useDatabaseData = () => {
       }
 
       setData({
-        students: students || [],
-        faculty: faculty || [],
-        courses: courses || [],
+        students,
+        faculty,
+        courses,
         attendance: [],
-        fees: [],
+        fees: pendingFees,
         stats,
         alerts,
         loading: false,
@@ -70,7 +82,7 @@ export const useDatabaseData = () => {
         loading: false,
         error: error.message
       }));
-      // Only show toast if it's not an auth error (user might not be logged in yet)
+      // Only show toast if it's not an auth error
       if (!error.message?.includes('Authentication')) {
         toast.error('Failed to load data');
       }
