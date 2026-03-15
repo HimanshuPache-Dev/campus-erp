@@ -126,11 +126,83 @@ const SendNotification = () => {
     }
 
     try {
-      // In a real implementation, you would:
-      // 1. Get user IDs based on selected recipients
-      // 2. Insert notifications for each user in the notifications table
-      // For now, we'll just add to local state
-      
+      // Get recipient user IDs based on selection
+      let recipientIds = [];
+
+      // All Students
+      if (selectedRecipients.allStudents) {
+        const { data } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'student')
+          .eq('is_active', true);
+        recipientIds.push(...(data?.map(u => u.id) || []));
+      }
+
+      // All Faculty
+      if (selectedRecipients.allFaculty) {
+        const { data } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'faculty')
+          .eq('is_active', true);
+        recipientIds.push(...(data?.map(u => u.id) || []));
+      }
+
+      // Specific Department
+      if (selectedRecipients.specificDepartment && selectedDepartment) {
+        const { data } = await supabase
+          .from('users')
+          .select('id')
+          .eq('department', selectedDepartment)
+          .eq('is_active', true);
+        recipientIds.push(...(data?.map(u => u.id) || []));
+      }
+
+      // Specific Course
+      if (selectedRecipients.specificCourse && selectedCourse) {
+        const { data } = await supabase
+          .from('student_enrollments')
+          .select('student_id')
+          .eq('course_id', selectedCourse);
+        recipientIds.push(...(data?.map(e => e.student_id) || []));
+      }
+
+      // Specific Semester
+      if (selectedRecipients.specificSemester && selectedSemester) {
+        const { data } = await supabase
+          .from('student_details')
+          .select('user_id')
+          .eq('current_semester', selectedSemester);
+        recipientIds.push(...(data?.map(s => s.user_id) || []));
+      }
+
+      // Remove duplicates
+      recipientIds = [...new Set(recipientIds)];
+
+      if (recipientIds.length === 0) {
+        toast.error('No recipients found for the selected criteria');
+        return;
+      }
+
+      // Insert notifications for each recipient
+      const notificationsToInsert = recipientIds.map(recipientId => ({
+        user_id: recipientId,
+        title: formData.title,
+        message: formData.message,
+        type: formData.type,
+        priority: formData.priority,
+        is_read: false,
+        created_at: new Date().toISOString()
+      }));
+
+      const { error } = await supabase
+        .from('notifications')
+        .insert(notificationsToInsert);
+
+      if (error) throw error;
+
+      // Add to local history
       const newNotification = {
         id: Date.now(),
         title: formData.title,
@@ -141,11 +213,11 @@ const SendNotification = () => {
         sentAt: new Date().toISOString(),
         status: 'sent',
         readCount: 0,
-        totalCount: 0
+        totalCount: recipientIds.length
       };
 
       setNotifications([newNotification, ...notifications]);
-      toast.success('Notification sent successfully!');
+      toast.success(`Notification sent to ${recipientIds.length} recipients!`);
       
       // Reset form
       setFormData({
@@ -167,6 +239,9 @@ const SendNotification = () => {
         specificCourse: false,
         specificSemester: false,
       });
+      setSelectedDepartment('');
+      setSelectedCourse('');
+      setSelectedSemester('');
     } catch (error) {
       console.error('Error sending notification:', error);
       toast.error('Failed to send notification');

@@ -76,21 +76,66 @@ const FacultyNotifications = () => {
     }
 
     try {
+      // Get recipient IDs based on selection
+      let recipientIds = [];
+
+      if (notificationForm.recipients === 'department') {
+        // Send to all students in faculty's department
+        const { data } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'student')
+          .eq('department', user.department)
+          .eq('is_active', true);
+        recipientIds = data?.map(u => u.id) || [];
+      } else if (notificationForm.recipients === 'my_students') {
+        // Send to students enrolled in faculty's courses
+        const { data: courses } = await supabase
+          .from('course_assignments')
+          .select('course_id')
+          .eq('faculty_id', user.id);
+
+        if (courses && courses.length > 0) {
+          const courseIds = courses.map(c => c.course_id);
+          const { data: enrollments } = await supabase
+            .from('student_enrollments')
+            .select('student_id')
+            .in('course_id', courseIds);
+          recipientIds = [...new Set(enrollments?.map(e => e.student_id) || [])];
+        }
+      } else if (notificationForm.recipients === 'all_students') {
+        // Send to all students
+        const { data } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'student')
+          .eq('is_active', true);
+        recipientIds = data?.map(u => u.id) || [];
+      }
+
+      if (recipientIds.length === 0) {
+        toast.error('No recipients found');
+        return;
+      }
+
+      // Insert notifications for each recipient
+      const notificationsToInsert = recipientIds.map(recipientId => ({
+        user_id: recipientId,
+        title: notificationForm.title,
+        message: notificationForm.message,
+        type: notificationForm.type,
+        priority: notificationForm.priority,
+        is_read: false,
+        created_at: new Date().toISOString()
+      }));
+
       const { error } = await supabase
         .from('notifications')
-        .insert({
-          title: notificationForm.title,
-          message: notificationForm.message,
-          notification_type: notificationForm.type,
-          priority: notificationForm.priority,
-          sender_id: user.id,
-          recipient_type: notificationForm.recipients,
-          is_read: false
-        });
+        .insert(notificationsToInsert);
 
       if (error) throw error;
 
-      toast.success('Notification sent successfully!');
+      toast.success(`Notification sent to ${recipientIds.length} students!`);
       setNotificationForm({
         title: '',
         message: '',
@@ -302,6 +347,21 @@ const FacultyNotifications = () => {
                     <option value="high">High</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Send To
+                </label>
+                <select
+                  value={notificationForm.recipients}
+                  onChange={(e) => setNotificationForm({...notificationForm, recipients: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="my_students">My Students (Enrolled in my courses)</option>
+                  <option value="department">My Department Students</option>
+                  <option value="all_students">All Students</option>
+                </select>
               </div>
             </div>
 

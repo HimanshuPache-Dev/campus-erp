@@ -35,22 +35,38 @@ ALTER TABLE timetable_slots DISABLE ROW LEVEL SECURITY;
 GRANT ALL ON timetable_slots TO service_role;
 GRANT ALL ON timetable_slots TO authenticated;
 
--- 6. Sample data (optional)
--- INSERT INTO timetable_slots (course_id, faculty_id, day_of_week, start_time, end_time, room_number, semester, academic_year, semester_type)
--- SELECT 
---   c.id,
---   ca.faculty_id,
---   'Monday',
---   '09:00:00',
---   '10:00:00',
---   'Room 101',
---   c.semester,
---   '2025-26',
---   'Winter'
--- FROM courses c
--- JOIN course_assignments ca ON c.id = ca.course_id
--- WHERE c.is_active = true
--- LIMIT 5;
+-- 6. Insert sample timetable data
+INSERT INTO timetable_slots (course_id, faculty_id, day_of_week, start_time, end_time, room_number, semester, academic_year, semester_type)
+SELECT 
+  c.id,
+  ca.faculty_id,
+  CASE (ROW_NUMBER() OVER (ORDER BY c.id)) % 5
+    WHEN 0 THEN 'Monday'
+    WHEN 1 THEN 'Tuesday'
+    WHEN 2 THEN 'Wednesday'
+    WHEN 3 THEN 'Thursday'
+    ELSE 'Friday'
+  END,
+  CASE (ROW_NUMBER() OVER (ORDER BY c.id)) % 4
+    WHEN 0 THEN '09:00:00'
+    WHEN 1 THEN '10:00:00'
+    WHEN 2 THEN '11:00:00'
+    ELSE '14:00:00'
+  END,
+  CASE (ROW_NUMBER() OVER (ORDER BY c.id)) % 4
+    WHEN 0 THEN '10:00:00'
+    WHEN 1 THEN '11:00:00'
+    WHEN 2 THEN '12:00:00'
+    ELSE '15:00:00'
+  END,
+  'Room ' || (100 + (ROW_NUMBER() OVER (ORDER BY c.id)) % 10),
+  c.semester,
+  '2025-26',
+  'Winter'
+FROM courses c
+JOIN course_assignments ca ON c.id = ca.course_id
+WHERE c.is_active = true
+ON CONFLICT (day_of_week, start_time, room_number, academic_year, semester_type) DO NOTHING;
 
 SELECT '✅ Timetable system created successfully!' as message;
-SELECT 'Run this SQL in Supabase to create the timetable system' as instruction;
+SELECT 'Sample timetable data has been added!' as info;
