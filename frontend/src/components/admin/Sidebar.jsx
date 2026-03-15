@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen, CalendarCheck,
   BarChart3, DollarSign, Settings, LogOut, ChevronLeft, ChevronRight,
-  UserPlus, FileText, AlertTriangle, Bell, X, Sparkles
+  UserPlus, FileText, AlertTriangle, Bell, X, Sparkles, Calendar
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -13,6 +13,7 @@ const navigation = [
   { name: 'Students', href: '/admin/students', icon: Users },
   { name: 'Faculty', href: '/admin/faculty', icon: GraduationCap },
   { name: 'Courses', href: '/admin/courses', icon: BookOpen },
+  { name: 'Timetable', href: '/admin/manage-timetable', icon: Calendar },
   { name: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
   { name: 'Results', href: '/admin/results', icon: BarChart3 },
   { name: 'Fees', href: '/admin/fees', icon: DollarSign },

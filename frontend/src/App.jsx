@@ -34,6 +34,7 @@ import Notifications from './pages/admin/Notifications';
 import Profile from './pages/admin/Profile';
 import SendNotification from './pages/admin/SendNotification';
 import ScheduleExam from './pages/admin/ScheduleExam';
+import ManageTimetable from './pages/admin/ManageTimetable';
 
 // Faculty Pages
 import FacultyDashboard from './pages/faculty/Dashboard';
@@ -152,6 +153,7 @@ function AppRoutes() {
         <Route path="reports" element={<Reports />} />
         <Route path="notifications/send" element={<SendNotification />} />
         <Route path="exams/schedule" element={<ScheduleExam />} />
+        <Route path="manage-timetable" element={<ManageTimetable />} />
       </Route>
 
       {/* Faculty Routes */}

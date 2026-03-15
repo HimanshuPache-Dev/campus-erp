@@ -43,28 +43,52 @@ const StudentTimetable = () => {
     try {
       setLoading(true);
 
+      // Fetch student's current semester
+      const { data: studentData } = await supabase
+        .from('student_details')
+        .select('current_semester')
+        .eq('user_id', user.id)
+        .single();
+
+      const currentSemester = studentData?.current_semester || 1;
+
       // Fetch enrolled courses
       const { data: enrollments, error: enrollError } = await supabase
         .from('student_enrollments')
-        .select(`
-          course_id,
-          courses (
-            id,
-            course_code,
-            course_name,
-            semester
-          )
-        `)
+        .select('course_id')
         .eq('student_id', user.id)
         .eq('academic_year', academicYear);
 
       if (enrollError) throw enrollError;
 
-      setCourses(enrollments?.map(e => e.courses) || []);
+      const courseIds = enrollments?.map(e => e.course_id) || [];
 
-      // For now, show empty schedule as we don't have a schedule table
-      // In production, you would fetch from a schedule/timetable table
-      setScheduleData({});
+      // Fetch timetable slots for enrolled courses
+      const { data: slotsData, error: slotsError } = await supabase
+        .from('timetable_slots')
+        .select(`
+          *,
+          courses (course_code, course_name, credits),
+          users:faculty_id (first_name, last_name)
+        `)
+        .in('course_id', courseIds)
+        .eq('semester', currentSemester)
+        .eq('is_active', true)
+        .order('day_of_week')
+        .order('start_time');
+
+      if (slotsError) throw slotsError;
+
+      // Organize slots by day
+      const organized = {};
+      weekDays.forEach(day => {
+        organized[day.id] = slotsData?.filter(s => 
+          s.day_of_week.toLowerCase() === day.id
+        ) || [];
+      });
+
+      setScheduleData(organized);
+      setCourses(slotsData || []);
     } catch (error) {
       console.error('Error fetching schedule:', error);
       toast.error('Failed to load timetable');
@@ -95,6 +119,8 @@ const StudentTimetable = () => {
     );
   }
 
+  const hasSchedule = Object.values(scheduleData).some(day => day.length > 0);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -104,46 +130,77 @@ const StudentTimetable = () => {
             {user?.department} • {semester} {academicYear}
           </p>
         </div>
-        <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-          <button
-            onClick={() => setViewMode(viewMode === 'week' ? 'day' : 'week')}
-            className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-          >
-            {viewMode === 'week' ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
-          </button>
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </button>
-        </div>
+        <button
+          onClick={handleExport}
+          className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 mt-4 sm:mt-0"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Export
+        </button>
       </div>
 
-      {courses.length === 0 ? (
-        <div className="text-center py-12">
+      {!hasSchedule ? (
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
           <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Timetable Available</h3>
-          <p className="text-gray-500 dark:text-gray-400">Your course schedule will appear here once published</p>
+          <p className="text-gray-500 dark:text-gray-400">Your course schedule will appear here once published by admin</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Enrolled Courses</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {courses.map((course, index) => (
-              <div key={index} className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                <p className="font-semibold text-gray-900 dark:text-white">{course.course_name}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{course.course_code}</p>
-                <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">Semester {course.semester}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <p className="text-sm text-blue-800 dark:text-blue-300">
-              📅 Detailed class schedule will be available soon. Check back later for your weekly timetable.
-            </p>
-          </div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-50 dark:bg-gray-700">
+                <th className="border border-gray-200 dark:border-gray-600 p-3 text-left font-semibold text-gray-900 dark:text-white">
+                  Time
+                </th>
+                {weekDays.map(day => (
+                  <th key={day.id} className="border border-gray-200 dark:border-gray-600 p-3 text-left font-semibold text-gray-900 dark:text-white">
+                    {day.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'].map(time => (
+                <tr key={time}>
+                  <td className="border border-gray-200 dark:border-gray-600 p-3 font-medium bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white">
+                    {time}
+                  </td>
+                  {weekDays.map(day => {
+                    const slot = scheduleData[day.id]?.find(s => s.start_time === time + ':00');
+                    return (
+                      <td key={day.id} className="border border-gray-200 dark:border-gray-600 p-2">
+                        {slot ? (
+                          <div className="bg-purple-50 dark:bg-purple-900/30 p-3 rounded-lg border-l-4 border-purple-500">
+                            <div className="font-semibold text-sm text-gray-900 dark:text-white">
+                              {slot.courses?.course_code}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              {slot.courses?.course_name}
+                            </div>
+                            <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-2">
+                              <User className="h-3 w-3 mr-1" />
+                              {slot.users?.first_name} {slot.users?.last_name}
+                            </div>
+                            <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              {slot.room_number}
+                            </div>
+                            <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {slot.start_time?.slice(0, 5)} - {slot.end_time?.slice(0, 5)}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-gray-400 text-center text-sm">-</div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
