@@ -48,16 +48,16 @@ SELECT
     ELSE 'Friday'
   END,
   CASE (ROW_NUMBER() OVER (ORDER BY c.id)) % 4
-    WHEN 0 THEN '09:00:00'
-    WHEN 1 THEN '10:00:00'
-    WHEN 2 THEN '11:00:00'
-    ELSE '14:00:00'
+    WHEN 0 THEN '09:00:00'::TIME
+    WHEN 1 THEN '10:00:00'::TIME
+    WHEN 2 THEN '11:00:00'::TIME
+    ELSE '14:00:00'::TIME
   END,
   CASE (ROW_NUMBER() OVER (ORDER BY c.id)) % 4
-    WHEN 0 THEN '10:00:00'
-    WHEN 1 THEN '11:00:00'
-    WHEN 2 THEN '12:00:00'
-    ELSE '15:00:00'
+    WHEN 0 THEN '10:00:00'::TIME
+    WHEN 1 THEN '11:00:00'::TIME
+    WHEN 2 THEN '12:00:00'::TIME
+    ELSE '15:00:00'::TIME
   END,
   'Room ' || (100 + (ROW_NUMBER() OVER (ORDER BY c.id)) % 10),
   c.semester,
