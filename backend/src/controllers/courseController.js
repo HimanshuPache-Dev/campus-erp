@@ -68,7 +68,11 @@ const createCourse = async (req, res) => {
     }
 
     // Check if course code already exists
-    const existingCourse = await db.getCourseByCode(courseData.course_code);
+    const { data: existingCourse } = await supabase
+      .from('courses')
+      .select('id')
+      .eq('course_code', courseData.course_code)
+      .maybeSingle();
     if (existingCourse) {
       return res.status(400).json({ error: 'Course code already exists' });
     }

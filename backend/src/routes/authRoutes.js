@@ -1,35 +1,52 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { supabase } = require('../config/supabase');
+const { authenticate } = require('../middleware/auth');
 
 // ==================== LOGIN ====================
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log('Login attempt for:', email);
 
-    // Find user by email
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
-      .eq('email', email)
+      .eq('email', email.toLowerCase().trim())
+      .eq('is_active', true)
       .single();
 
     if (error || !user) {
-      console.log('User not found');
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Check password (plain text for demo - use bcrypt in production)
-    if (password !== user.password_hash) {
-      console.log('Password incorrect');
+    // Compare password (bcrypt or plain for seeded data)
+    let passwordMatch = false;
+    if (user.password_hash.startsWith('$2')) {
+      passwordMatch = await bcrypt.compare(password, user.password_hash);
+    } else {
+      passwordMatch = password === user.password_hash;
+    }
+
+    if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Generate simple token
-    const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+    // Update last login
+    await supabase.from('users').update({ last_login: new Date() }).eq('id', user.id);
 
-    // Remove password from response
+    // Generate JWT
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     const { password_hash, ...userWithoutPassword } = user;
 
     res.json({
@@ -47,37 +64,34 @@ router.post('/login', async (req, res) => {
 // ==================== REGISTER ====================
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, first_name, last_name, role, department } = req.body;
-    
-    console.log('Registration attempt:', { email, first_name, last_name, role });
+    const { email, password, first_name, last_name, role, department, secret_key } = req.body;
 
-    // Validate required fields
     if (!email || !password || !first_name || !last_name) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Check if user already exists
-    const { data: existingUser, error: checkError } = await supabase
+    // Admin registration requires secret key
+    if (role === 'admin' && secret_key !== process.env.ADMIN_SECRET_KEY) {
+      return res.status(403).json({ error: 'Invalid admin secret key' });
+    }
+
+    const { data: existingUser } = await supabase
       .from('users')
       .select('id')
-      .eq('email', email)
+      .eq('email', email.toLowerCase().trim())
       .maybeSingle();
-
-    if (checkError) {
-      console.error('Error checking existing user:', checkError);
-      return res.status(500).json({ error: 'Database error' });
-    }
 
     if (existingUser) {
       return res.status(400).json({ error: 'Email already exists' });
     }
 
-    // Create new user
+    const password_hash = await bcrypt.hash(password, 10);
+
     const { data: newUser, error: createError } = await supabase
       .from('users')
       .insert([{
-        email,
-        password_hash: password, // In production, hash this!
+        email: email.toLowerCase().trim(),
+        password_hash,
         first_name,
         last_name,
         role: role || 'student',
@@ -88,20 +102,20 @@ router.post('/register', async (req, res) => {
       .single();
 
     if (createError) {
-      console.error('Error creating user:', createError);
-      return res.status(500).json({ 
-        error: 'Failed to create user',
-        details: createError.message 
-      });
+      return res.status(500).json({ error: 'Failed to create user', details: createError.message });
     }
 
-    console.log('User created successfully:', newUser.id);
+    const token = jwt.sign(
+      { id: newUser.id, email: newUser.email, role: newUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
-    // Remove password from response
-    const { password_hash, ...userWithoutPassword } = newUser;
+    const { password_hash: ph, ...userWithoutPassword } = newUser;
 
     res.status(201).json({
       message: 'User created successfully',
+      token,
       user: userWithoutPassword
     });
 
@@ -112,32 +126,20 @@ router.post('/register', async (req, res) => {
 });
 
 // ==================== GET PROFILE ====================
-router.get('/profile', async (req, res) => {
+router.get('/profile', authenticate, async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
-
-    // Extract user ID from token (simple method)
-    const userId = token.split(':')[0];
-    
     const { data: user, error } = await supabase
       .from('users')
-      .select('*')
-      .eq('id', userId)
+      .select('*, student_details(*), faculty_details(*)')
+      .eq('id', req.userId)
       .single();
 
     if (error || !user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Remove password from response
     const { password_hash, ...userWithoutPassword } = user;
-
     res.json(userWithoutPassword);
-
   } catch (error) {
     console.error('Profile error:', error);
     res.status(500).json({ error: 'Failed to fetch profile' });
@@ -145,45 +147,38 @@ router.get('/profile', async (req, res) => {
 });
 
 // ==================== CHANGE PASSWORD ====================
-router.post('/change-password', async (req, res) => {
+router.post('/change-password', authenticate, async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
     const { currentPassword, newPassword } = req.body;
 
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    const userId = token.split(':')[0];
-
-    // Get user
-    const { data: user, error: fetchError } = await supabase
+    const { data: user } = await supabase
       .from('users')
-      .select('*')
-      .eq('id', userId)
+      .select('password_hash')
+      .eq('id', req.userId)
       .single();
 
-    if (fetchError || !user) {
-      return res.status(404).json({ error: 'User not found' });
+    let passwordMatch = false;
+    if (user.password_hash.startsWith('$2')) {
+      passwordMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    } else {
+      passwordMatch = currentPassword === user.password_hash;
     }
 
-    // Verify current password
-    if (currentPassword !== user.password_hash) {
+    if (!passwordMatch) {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
 
-    // Update password
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ password_hash: newPassword })
-      .eq('id', userId);
-
-    if (updateError) {
-      throw updateError;
-    }
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await supabase.from('users').update({ password_hash: newHash }).eq('id', req.userId);
 
     res.json({ message: 'Password changed successfully' });
-
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ error: 'Failed to change password' });

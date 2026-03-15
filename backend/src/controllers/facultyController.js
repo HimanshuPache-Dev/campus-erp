@@ -1,4 +1,5 @@
 const db = require('../services/db.service');
+const { supabase } = require('../config/supabase');
 
 const getFaculty = async (req, res) => {
   try {
