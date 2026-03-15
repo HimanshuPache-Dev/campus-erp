@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { supabase } from '../config/supabase';
 
 const AuthContext = createContext();
 
@@ -47,56 +48,79 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-  try {
-    setLoading(true);
-    console.log('📝 Login attempt for:', email);
-    
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-    const response = await fetch(`${apiUrl}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      setLoading(true);
+      console.log('📝 Login attempt for:', email);
+      
+      // Query users table directly from Supabase
+      const { data: users, error: queryError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .eq('is_active', true)
+        .single();
 
-    const data = await response.json();
-    console.log('📥 Login response:', data);
+      if (queryError || !users) {
+        console.error('❌ User not found:', queryError);
+        toast.error('Invalid email or password');
+        setLoading(false);
+        return { success: false };
+      }
 
-    if (!response.ok) {
-      toast.error(data.error || 'Login failed');
+      // Simple password validation
+      // For demo: admin123, faculty123, student123
+      const validPasswords = {
+        'admin': 'admin123',
+        'faculty': 'faculty123',
+        'student': 'student123'
+      };
+
+      if (password !== validPasswords[users.role]) {
+        console.error('❌ Invalid password');
+        toast.error('Invalid email or password');
+        setLoading(false);
+        return { success: false };
+      }
+
+      console.log('✅ User authenticated:', users);
+      
+      // Store user data
+      const userData = {
+        id: users.id,
+        email: users.email,
+        firstName: users.first_name,
+        lastName: users.last_name,
+        role: users.role,
+        department: users.department
+      };
+      
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', 'supabase-session'); // Placeholder token
+      
+      // Update state
+      setUser(userData);
+      
+      toast.success('Login successful!');
+      console.log('✅ Login successful');
+      
+      // Navigate based on role
+      if (userData.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (userData.role === 'faculty') {
+        navigate('/faculty/dashboard', { replace: true });
+      } else {
+        navigate('/student/dashboard', { replace: true });
+      }
+      
+      setLoading(false);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Login error:', error);
+      toast.error('Login failed. Please try again.');
       setLoading(false);
       return { success: false };
     }
-    
-    // Store token and user
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    
-    // Update state
-    setUser(data.user);
-    
-    toast.success('Login successful!');
-    console.log('✅ Login successful, token stored:', data.token.substring(0, 20) + '...');
-    
-    // Navigate based on role
-    if (data.user.role === 'admin') {
-      navigate('/admin/dashboard', { replace: true });
-    } else if (data.user.role === 'faculty') {
-      navigate('/faculty/dashboard', { replace: true });
-    } else {
-      navigate('/student/dashboard', { replace: true });
-    }
-    
-    setLoading(false);
-    return { success: true };
-  } catch (error) {
-    console.error('❌ Login error:', error);
-    toast.error('Failed to connect to server');
-    setLoading(false);
-    return { success: false };
-  }
-};
+  };
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
