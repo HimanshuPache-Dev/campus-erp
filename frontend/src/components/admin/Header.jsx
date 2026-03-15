@@ -3,7 +3,7 @@ import { Menu, Sun, Moon, Bell, Search, ChevronDown, LogOut, User, Settings } fr
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useSemester } from '../../context/SemesterContext';
-import { notificationsAPI } from '../../services/api';
+import { supabase } from '../../config/supabase';
 
 const Header = ({ setSidebarOpen, darkMode, setDarkMode }) => {
   const { user, logout } = useAuth();
@@ -16,11 +16,29 @@ const Header = ({ setSidebarOpen, darkMode, setDarkMode }) => {
   const notifRef = useRef(null);
 
   useEffect(() => {
-    notificationsAPI.getAll(true).then(d => {
-      setNotifs((d.notifications || []).slice(0, 5));
-      setUnreadCount(d.notifications?.length || 0);
-    }).catch(() => {});
-  }, []);
+    const fetchNotifications = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('recipient_id', user?.id)
+          .eq('is_read', false)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (!error && data) {
+          setNotifs(data);
+          setUnreadCount(data.length);
+        }
+      } catch (err) {
+        console.error('Error fetching notifications:', err);
+      }
+    };
+
+    if (user?.id) {
+      fetchNotifications();
+    }
+  }, [user]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -33,10 +51,16 @@ const Header = ({ setSidebarOpen, darkMode, setDarkMode }) => {
 
   const markRead = async (id) => {
     try {
-      await notificationsAPI.markRead(id);
+      await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id);
+      
       setNotifs(n => n.filter(x => x.id !== id));
       setUnreadCount(c => Math.max(0, c - 1));
-    } catch {}
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
   };
 
   const dm = darkMode;
