@@ -47,7 +47,7 @@ const StudentNotifications = () => {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .or(`recipient_id.eq.${user.id},recipient_type.eq.all`)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -106,7 +106,7 @@ const StudentNotifications = () => {
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
-        .eq('recipient_id', user.id);
+        .eq('user_id', user.id);
 
       if (error) throw error;
 

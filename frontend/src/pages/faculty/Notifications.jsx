@@ -46,7 +46,7 @@ const FacultyNotifications = () => {
         const { data, error } = await supabase
           .from('notifications')
           .select('*')
-          .eq('recipient_id', user.id)
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
         if (error) throw error;

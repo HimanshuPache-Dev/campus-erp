@@ -21,7 +21,7 @@ const Header = ({ setSidebarOpen, darkMode, setDarkMode }) => {
         const { data, error } = await supabase
           .from('notifications')
           .select('*')
-          .eq('recipient_id', user?.id)
+          .eq('user_id', user?.id)
           .eq('is_read', false)
           .order('created_at', { ascending: false })
           .limit(5);
