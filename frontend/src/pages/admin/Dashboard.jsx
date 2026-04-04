@@ -61,7 +61,7 @@ const AdminDashboard = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Welcome back'}
+            {lastUpdated ? `Updated ${new Date(lastUpdated).toLocaleTimeString()}` : 'Welcome back'}
           </p>
         </div>
         {alerts.length > 0 && (
