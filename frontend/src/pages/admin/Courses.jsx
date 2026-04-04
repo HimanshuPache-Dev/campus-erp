@@ -26,16 +26,44 @@ const Courses = () => {
   const fetchCourses = async () => {
     setLoading(true);
     setError(null);
-    const { data, error } = await supabase
-      .from('courses')
-      .select(`
-        id, course_code, course_name, department, semester, credits, status,
-        exam_date, exam_time, exam_duration
-      `)
-      .order('course_code');
-    if (error) { setError(error.message); setLoading(false); return; }
-    setCourses(data || []);
-    setLoading(false);
+    try {
+      // Fetch courses with faculty and enrollment data
+      const { data: coursesData, error: coursesError } = await supabase
+        .from('courses')
+        .select(`
+          id, course_code, course_name, department, semester, credits, status,
+          exam_date, exam_time, exam_duration,
+          course_assignments (
+            faculty_id,
+            users:faculty_id (first_name, last_name)
+          )
+        `)
+        .order('course_code');
+
+      if (coursesError) throw coursesError;
+
+      // Fetch enrollment counts for each course
+      const coursesWithCounts = await Promise.all(
+        (coursesData || []).map(async (course) => {
+          const { count } = await supabase
+            .from('student_enrollments')
+            .select('*', { count: 'exact', head: true })
+            .eq('course_id', course.id);
+
+          return {
+            ...course,
+            enrollmentCount: count || 0
+          };
+        })
+      );
+
+      setCourses(coursesWithCounts);
+    } catch (error) {
+      setError(error.message);
+      toast.error('Failed to load courses');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchDepartments = async () => {
@@ -68,10 +96,16 @@ const Courses = () => {
   };
 
   const getFacultyName = (course) => {
+    if (course.course_assignments && course.course_assignments.length > 0) {
+      const faculty = course.course_assignments[0].users;
+      if (faculty) {
+        return `${faculty.first_name} ${faculty.last_name}`;
+      }
+    }
     return 'Not Assigned';
   };
 
-  const getStudentCount = (course) => course.student_enrollments?.[0]?.count ?? 0;
+  const getStudentCount = (course) => course.enrollmentCount || 0;
 
   const filteredCourses = courses.filter(course => {
     const faculty = getFacultyName(course).toLowerCase();

@@ -37,6 +37,7 @@ const SendNotification = () => {
   const [loading, setLoading] = useState(true);
   const [courses, setCourses] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [recipientCount, setRecipientCount] = useState(0);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -57,6 +58,65 @@ const SendNotification = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Calculate recipient count whenever selections change
+  useEffect(() => {
+    calculateRecipientCount();
+  }, [selectedRecipients, selectedDepartment, selectedCourse, selectedSemester]);
+
+  const calculateRecipientCount = async () => {
+    let count = 0;
+
+    try {
+      if (selectedRecipients.allStudents) {
+        const { count: studentCount } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'student')
+          .eq('is_active', true);
+        count += studentCount || 0;
+      }
+
+      if (selectedRecipients.allFaculty) {
+        const { count: facultyCount } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'faculty')
+          .eq('is_active', true);
+        count += facultyCount || 0;
+      }
+
+      if (selectedRecipients.specificDepartment && selectedDepartment) {
+        const { count: deptCount } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('department', selectedDepartment)
+          .eq('is_active', true);
+        count += deptCount || 0;
+      }
+
+      if (selectedRecipients.specificCourse && selectedCourse) {
+        const { count: courseCount } = await supabase
+          .from('student_enrollments')
+          .select('*', { count: 'exact', head: true })
+          .eq('course_id', selectedCourse);
+        count += courseCount || 0;
+      }
+
+      if (selectedRecipients.specificSemester && selectedSemester) {
+        const { count: semCount } = await supabase
+          .from('student_details')
+          .select('*', { count: 'exact', head: true })
+          .eq('current_semester', selectedSemester);
+        count += semCount || 0;
+      }
+
+      setRecipientCount(count);
+    } catch (error) {
+      console.error('Error calculating recipients:', error);
+      setRecipientCount(0);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -440,9 +500,14 @@ const SendNotification = () => {
               
               <div className="space-y-4">
                 <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    Total Recipients: 0
+                  <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
+                    Total Recipients: {recipientCount}
                   </p>
+                  {recipientCount === 0 && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Select recipients to see count
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-3">
