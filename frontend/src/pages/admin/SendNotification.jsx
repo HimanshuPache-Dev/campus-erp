@@ -26,6 +26,7 @@ const SendNotification = () => {
   const [selectedRecipients, setSelectedRecipients] = useState({
     allStudents: false,
     allFaculty: false,
+    allAdmins: false,
     specificDepartment: false,
     specificCourse: false,
     specificSemester: false,
@@ -84,6 +85,15 @@ const SendNotification = () => {
           .eq('role', 'faculty')
           .eq('is_active', true);
         count += facultyCount || 0;
+      }
+
+      if (selectedRecipients.allAdmins) {
+        const { count: adminCount } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'admin')
+          .eq('is_active', true);
+        count += adminCount || 0;
       }
 
       if (selectedRecipients.specificDepartment && selectedDepartment) {
@@ -171,6 +181,7 @@ const SendNotification = () => {
     let recipientList = [];
     if (selectedRecipients.allStudents) recipientList.push('All Students');
     if (selectedRecipients.allFaculty) recipientList.push('All Faculty');
+    if (selectedRecipients.allAdmins) recipientList.push('All Admins');
     if (selectedRecipients.specificDepartment && selectedDepartment) 
       recipientList.push(`${selectedDepartment} Department`);
     if (selectedRecipients.specificCourse && selectedCourse) {
@@ -205,6 +216,16 @@ const SendNotification = () => {
           .from('users')
           .select('id')
           .eq('role', 'faculty')
+          .eq('is_active', true);
+        recipientIds.push(...(data?.map(u => u.id) || []));
+      }
+
+      // All Admins
+      if (selectedRecipients.allAdmins) {
+        const { data } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'admin')
           .eq('is_active', true);
         recipientIds.push(...(data?.map(u => u.id) || []));
       }
@@ -295,6 +316,7 @@ const SendNotification = () => {
       setSelectedRecipients({
         allStudents: false,
         allFaculty: false,
+        allAdmins: false,
         specificDepartment: false,
         specificCourse: false,
         specificSemester: false,
@@ -533,6 +555,19 @@ const SendNotification = () => {
                       type="checkbox"
                       checked={selectedRecipients.allFaculty}
                       onChange={() => handleRecipientChange('allFaculty')}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <div className="flex items-center space-x-3">
+                      <Users className="h-5 w-5 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">All Admins</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={selectedRecipients.allAdmins}
+                      onChange={() => handleRecipientChange('allAdmins')}
                       className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                   </label>
