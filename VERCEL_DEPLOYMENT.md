@@ -11,12 +11,12 @@
    - Select your `campus-erp` repository
    - Click "Import"
 
-3. **Configure Project**
-   - **Framework Preset**: Other (or leave as detected)
-   - **Root Directory**: Leave as `.` (root)
-   - **Build Command**: `cd frontend && npm install && npm run build`
-   - **Output Directory**: `frontend/dist`
-   - **Install Command**: `cd frontend && npm install`
+3. **Configure Project** (IMPORTANT!)
+   - **Framework Preset**: Vite
+   - **Root Directory**: `frontend` ← CRITICAL: Set this to "frontend"
+   - **Build Command**: Leave empty (uses package.json)
+   - **Output Directory**: Leave empty (uses "dist")
+   - **Install Command**: Leave empty (uses npm install)
 
 4. **Add Environment Variables**
    Click "Environment Variables" and add:
@@ -32,15 +32,17 @@
 
 ## Configuration Files
 
-The `vercel.json` file is already configured with:
-- Correct build command pointing to frontend folder
-- Output directory set to `frontend/dist`
-- Install command for frontend dependencies
+No `vercel.json` is needed. Configure everything in the Vercel dashboard:
+- Set Root Directory to `frontend`
+- Vercel will auto-detect Vite and use the correct build settings
 
 ## Troubleshooting
 
 ### Permission Denied Error
 ✅ **FIXED** - Removed root `package.json` that was causing conflicts
+
+### "No such file or directory" Error
+✅ **FIXED** - Set Root Directory to `frontend` in Vercel dashboard settings
 
 ### Build Fails
 - Check that environment variables are set correctly
