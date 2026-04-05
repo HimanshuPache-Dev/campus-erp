@@ -53,11 +53,23 @@ const StudentFees = () => {
   };
 
   const calculateSummary = () => {
-    const totalFees = feeData.reduce((sum, f) => sum + (f.amount || 0), 0);
-    const paidFees = feeData.reduce((sum, f) => sum + (f.amount_paid || 0), 0);
-    const pendingFees = totalFees - paidFees;
+    const totalFees = feeData.reduce((sum, f) => {
+      const amount = parseFloat(f.amount) || 0;
+      return sum + amount;
+    }, 0);
+    
+    const paidFees = feeData.reduce((sum, f) => {
+      const paid = parseFloat(f.amount_paid) || 0;
+      return sum + paid;
+    }, 0);
+    
+    const pendingFees = Math.max(0, totalFees - paidFees);
 
-    return { totalFees, paidFees, pendingFees };
+    return { 
+      totalFees: Math.round(totalFees * 100) / 100, 
+      paidFees: Math.round(paidFees * 100) / 100, 
+      pendingFees: Math.round(pendingFees * 100) / 100 
+    };
   };
 
   const years = ['2023-24', '2024-25', '2025-26'];
@@ -146,15 +158,15 @@ const StudentFees = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <p className="text-sm text-gray-600 dark:text-gray-400">Total Fees</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">₹{feeSummary.totalFees.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">₹{feeSummary.totalFees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <p className="text-sm text-gray-600 dark:text-gray-400">Paid Fees</p>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">₹{feeSummary.paidFees.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400">₹{feeSummary.paidFees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <p className="text-sm text-gray-600 dark:text-gray-400">Pending Fees</p>
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400">₹{feeSummary.pendingFees.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-red-600 dark:text-red-400">₹{feeSummary.pendingFees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
       </div>
 
@@ -171,18 +183,18 @@ const StudentFees = () => {
         </div>
         <div className="space-y-4">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600 dark:text-gray-400">Paid: ₹{feeSummary.paidFees.toLocaleString()}</span>
-            <span className="text-gray-600 dark:text-gray-400">Pending: ₹{feeSummary.pendingFees.toLocaleString()}</span>
+            <span className="text-gray-600 dark:text-gray-400">Paid: ₹{feeSummary.paidFees.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            <span className="text-gray-600 dark:text-gray-400">Pending: ₹{feeSummary.pendingFees.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               className="h-full bg-purple-600 rounded-full transition-all duration-500"
-              style={{ width: `${feeSummary.totalFees > 0 ? (feeSummary.paidFees / feeSummary.totalFees) * 100 : 0}%` }}
+              style={{ width: `${feeSummary.totalFees > 0 ? Math.min(100, (feeSummary.paidFees / feeSummary.totalFees) * 100) : 0}%` }}
             />
           </div>
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>{feeSummary.totalFees > 0 ? (feeSummary.paidFees / feeSummary.totalFees * 100).toFixed(1) : 0}% Complete</span>
-            <span>₹{feeSummary.paidFees.toLocaleString()} of ₹{feeSummary.totalFees.toLocaleString()}</span>
+            <span>{feeSummary.totalFees > 0 ? Math.min(100, (feeSummary.paidFees / feeSummary.totalFees * 100)).toFixed(1) : 0}% Complete</span>
+            <span>₹{feeSummary.paidFees.toLocaleString('en-IN')} of ₹{feeSummary.totalFees.toLocaleString('en-IN')}</span>
           </div>
         </div>
       </div>
@@ -205,30 +217,36 @@ const StudentFees = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {feeData.map((fee, index) => (
-                <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{fee.fee_type}</td>
-                  <td className="px-6 py-4 text-right">₹{fee.amount.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-right text-green-600">₹{fee.amount_paid.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-right text-red-600">₹{(fee.amount - fee.amount_paid).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(fee.status)}`}>
-                      {getStatusIcon(fee.status)}
-                      <span className="ml-1 capitalize">{fee.status}</span>
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center text-sm text-gray-600 dark:text-gray-400">
-                    {fee.due_date ? new Date(fee.due_date).toLocaleDateString('en-IN') : '-'}
-                  </td>
-                </tr>
-              ))}
+              {feeData.map((fee, index) => {
+                const amount = parseFloat(fee.amount) || 0;
+                const amountPaid = parseFloat(fee.amount_paid) || 0;
+                const pending = Math.max(0, amount - amountPaid);
+                
+                return (
+                  <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{fee.fee_type}</td>
+                    <td className="px-6 py-4 text-right">₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-6 py-4 text-right text-green-600">₹{amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-6 py-4 text-right text-red-600">₹{pending.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(fee.status)}`}>
+                        {getStatusIcon(fee.status)}
+                        <span className="ml-1 capitalize">{fee.status}</span>
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center text-sm text-gray-600 dark:text-gray-400">
+                      {fee.due_date ? new Date(fee.due_date).toLocaleDateString('en-IN') : '-'}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot className="bg-gray-50 dark:bg-gray-700/50 font-semibold">
               <tr>
                 <td className="px-6 py-4 text-gray-900 dark:text-white">Total</td>
-                <td className="px-6 py-4 text-right">₹{feeSummary.totalFees.toLocaleString()}</td>
-                <td className="px-6 py-4 text-right text-green-600">₹{feeSummary.paidFees.toLocaleString()}</td>
-                <td className="px-6 py-4 text-right text-red-600">₹{feeSummary.pendingFees.toLocaleString()}</td>
+                <td className="px-6 py-4 text-right">₹{feeSummary.totalFees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td className="px-6 py-4 text-right text-green-600">₹{feeSummary.paidFees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td className="px-6 py-4 text-right text-red-600">₹{feeSummary.pendingFees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td colSpan="2"></td>
               </tr>
             </tfoot>
