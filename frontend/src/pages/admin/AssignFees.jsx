@@ -10,39 +10,34 @@ const AssignFees = () => {
   const navigate = useNavigate();
   const { students, loading } = useDatabaseData();
   const [saving, setSaving] = useState(false);
+  const [useCustomFee, setUseCustomFee] = useState(false);
   const [formData, setFormData] = useState({
     student_id: '',
-    fee_type: 'Tuition Fee',
+    fee_type: '',
     amount: '',
     due_date: '',
     academic_year: '2025-26',
     semester_type: 'Winter'
   });
 
-  const feeTypes = [
-    { name: 'Tuition Fee', amount: 48000 },
-    { name: 'Library Fee', amount: 2000 },
-    { name: 'Lab Fee', amount: 5000 },
-    { name: 'Sports Fee', amount: 1500 },
-    { name: 'Exam Fee', amount: 3000 },
-    { name: 'Development Fee', amount: 10000 },
-    { name: 'Hostel Fee', amount: 60000 },
-    { name: 'Transport Fee', amount: 15000 }
+  const commonFeeTypes = [
+    'Tuition Fee',
+    'Library Fee',
+    'Lab Fee',
+    'Sports Fee',
+    'Exam Fee',
+    'Development Fee',
+    'Hostel Fee',
+    'Transport Fee',
+    'Admission Fee',
+    'Registration Fee',
+    'Other'
   ];
-
-  const handleFeeTypeChange = (type) => {
-    const selectedFee = feeTypes.find(f => f.name === type);
-    setFormData({
-      ...formData,
-      fee_type: type,
-      amount: selectedFee ? selectedFee.amount : ''
-    });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.student_id || !formData.amount || !formData.due_date) {
+    if (!formData.student_id || !formData.fee_type || !formData.amount || !formData.due_date) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -68,42 +63,6 @@ const AssignFees = () => {
     } catch (error) {
       console.error('Error assigning fee:', error);
       toast.error('Failed to assign fee');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleBulkAssign = async () => {
-    if (!formData.fee_type || !formData.amount || !formData.due_date) {
-      toast.error('Please select fee type, amount, and due date');
-      return;
-    }
-
-    if (!window.confirm('Assign this fee to ALL students?')) return;
-
-    setSaving(true);
-    try {
-      const feeRecords = students.map(student => ({
-        student_id: student.id,
-        fee_type: formData.fee_type,
-        amount: parseFloat(formData.amount),
-        due_date: formData.due_date,
-        status: 'pending',
-        academic_year: formData.academic_year,
-        semester_type: formData.semester_type
-      }));
-
-      const { error } = await supabase
-        .from('fees')
-        .insert(feeRecords);
-
-      if (error) throw error;
-
-      toast.success(`Fee assigned to ${students.length} students!`);
-      navigate('/admin/fees');
-    } catch (error) {
-      console.error('Error bulk assigning fees:', error);
-      toast.error('Failed to assign fees');
     } finally {
       setSaving(false);
     }
@@ -149,40 +108,7 @@ const AssignFees = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Fee Type Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Fee Type <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={formData.fee_type}
-              onChange={(e) => handleFeeTypeChange(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            >
-              {feeTypes.map(fee => (
-                <option key={fee.name} value={fee.name}>
-                  {fee.name} - ₹{fee.amount.toLocaleString()}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Amount */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Amount (₹) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              value={formData.amount}
-              onChange={(e) => setFormData({...formData, amount: e.target.value})}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              placeholder="48000"
-              required
-            />
-          </div>
-
-          {/* Student Selection */}
+          {/* Student Selection - First */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Select Student <span className="text-red-500">*</span>
@@ -200,6 +126,78 @@ const AssignFees = () => {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Fee Type Selection or Custom Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Fee Type <span className="text-red-500">*</span>
+            </label>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    checked={!useCustomFee}
+                    onChange={() => setUseCustomFee(false)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Select from common types</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    checked={useCustomFee}
+                    onChange={() => setUseCustomFee(true)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Enter custom fee type</span>
+                </label>
+              </div>
+
+              {!useCustomFee ? (
+                <select
+                  value={formData.fee_type}
+                  onChange={(e) => setFormData({...formData, fee_type: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  required
+                >
+                  <option value="">Select fee type...</option>
+                  {commonFeeTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={formData.fee_type}
+                  onChange={(e) => setFormData({...formData, fee_type: e.target.value})}
+                  placeholder="Enter custom fee type (e.g., Development Fee)"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  required
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Amount */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Amount (₹) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              value={formData.amount}
+              onChange={(e) => setFormData({...formData, amount: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Enter amount (e.g., 5000)"
+              required
+              min="0"
+              step="0.01"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Enter the exact amount for this fee
+            </p>
           </div>
 
           {/* Due Date */}
@@ -245,34 +243,35 @@ const AssignFees = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
             <button
               type="button"
-              onClick={handleBulkAssign}
-              disabled={saving}
-              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+              onClick={() => navigate('/admin/fees')}
+              className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              Assign to All Students
+              Cancel
             </button>
-            <div className="flex space-x-4">
-              <button
-                type="button"
-                onClick={() => navigate('/admin/fees')}
-                className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex items-center px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {saving ? 'Assigning...' : 'Assign Fee'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? 'Assigning...' : 'Assign Fee'}
+            </button>
           </div>
         </form>
+
+        {/* Quick Info */}
+        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">💡 Quick Tips:</h3>
+          <ul className="text-sm text-blue-800 dark:text-blue-400 space-y-1">
+            <li>• Select a student first, then choose or enter the fee type</li>
+            <li>• You can select from common fee types or enter a custom one</li>
+            <li>• Enter the exact amount you want to charge for this fee</li>
+            <li>• Set an appropriate due date for payment</li>
+          </ul>
+        </div>
       </motion.div>
     </div>
   );
