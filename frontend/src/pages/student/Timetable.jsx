@@ -83,7 +83,7 @@ const StudentTimetable = () => {
       const organized = {};
       weekDays.forEach(day => {
         organized[day.id] = slotsData?.filter(s => 
-          s.day_of_week.toLowerCase() === day.id
+          s.day_of_week.toLowerCase() === day.label.toLowerCase()
         ) || [];
       });
 

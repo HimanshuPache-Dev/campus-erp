@@ -135,6 +135,39 @@ const StudentDashboard = () => {
         const totalFees = feesData?.reduce((sum, f) => sum + (f.amount || 0), 0) || 0;
         const paidFees = feesData?.reduce((sum, f) => sum + (f.amount_paid || 0), 0) || 0;
 
+        // Fetch today's schedule
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const today = daysOfWeek[new Date().getDay()];
+
+        // Get student's enrolled courses
+        const { data: enrolledCourses } = await supabase
+          .from('student_enrollments')
+          .select('course_id')
+          .eq('student_id', user.id);
+
+        const courseIds = enrolledCourses?.map(e => e.course_id) || [];
+
+        // Fetch today's timetable for enrolled courses
+        const { data: todayClasses } = await supabase
+          .from('timetable_slots')
+          .select(`
+            *,
+            courses (course_code, course_name),
+            users:faculty_id (first_name, last_name)
+          `)
+          .in('course_id', courseIds)
+          .eq('day_of_week', today)
+          .eq('is_active', true)
+          .order('start_time');
+
+        const scheduleData = todayClasses?.map(slot => ({
+          subject: slot.courses?.course_name || 'Unknown',
+          code: slot.courses?.course_code || 'N/A',
+          time: `${slot.start_time?.substring(0, 5)} - ${slot.end_time?.substring(0, 5)}`,
+          room: slot.room_number || 'TBA',
+          faculty: slot.users ? `${slot.users.first_name} ${slot.users.last_name}` : 'TBA'
+        })) || [];
+
         // Fetch notifications
         const { data: notificationsData } = await supabase
           .from('notifications')
@@ -167,7 +200,7 @@ const StudentDashboard = () => {
         setAttendanceData(attendanceChartData);
         setSemesterResults(semesterResultsData);
         setRecentNotifications(notifications);
-        setTodaySchedule([]);
+        setTodaySchedule(scheduleData);
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
