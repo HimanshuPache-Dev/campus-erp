@@ -212,7 +212,7 @@ const FacultyAttendance = () => {
             >
               <option value="">Choose a course</option>
               {courses.map(course => (
-                <option key={course.id} value={course.code}>
+                <option key={course.id} value={course.id}>
                   {course.code} - {course.name}
                 </option>
               ))}
