@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useSemester } from '../../context/SemesterContext';
 import { supabase } from '../../config/supabase';
 import {
@@ -21,6 +22,7 @@ import toast from 'react-hot-toast';
 
 const SendNotification = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { semester, academicYear } = useSemester();
   const [activeTab, setActiveTab] = useState('compose');
   const [selectedRecipients, setSelectedRecipients] = useState({
@@ -269,6 +271,7 @@ const SendNotification = () => {
       // Insert notifications for each recipient
       const notificationsToInsert = recipientIds.map(recipientId => ({
         user_id: recipientId,
+        sender_id: user.id,
         title: formData.title,
         message: formData.message,
         type: formData.type,

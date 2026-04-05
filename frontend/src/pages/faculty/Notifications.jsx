@@ -18,8 +18,10 @@ import toast from 'react-hot-toast';
 const FacultyNotifications = () => {
   const { user } = useAuth();
   const { semester, academicYear } = useSemester();
+  const [activeTab, setActiveTab] = useState('inbox');
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
+  const [sentNotifications, setSentNotifications] = useState([]);
   const [showSendModal, setShowSendModal] = useState(false);
 
   const [notificationForm, setNotificationForm] = useState({
@@ -34,20 +36,36 @@ const FacultyNotifications = () => {
     if (user?.id) {
       fetchNotifications();
     }
-  }, [user?.id]);
+  }, [user?.id, activeTab]);
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      if (activeTab === 'inbox') {
+        // Fetch received notifications
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setNotifications(data || []);
+        if (error) throw error;
+        setNotifications(data || []);
+      } else {
+        // Fetch sent notifications
+        const { data, error } = await supabase
+          .from('notifications')
+          .select(`
+            *,
+            users:user_id(first_name, last_name, email)
+          `)
+          .eq('sender_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setSentNotifications(data || []);
+      }
     } catch (error) {
       console.error('Error fetching notifications:', error);
       toast.error('Failed to load notifications');
@@ -108,6 +126,7 @@ const FacultyNotifications = () => {
       // Insert notifications for each recipient
       const notificationsToInsert = recipientIds.map(recipientId => ({
         user_id: recipientId,
+        sender_id: user.id,
         title: notificationForm.title,
         message: notificationForm.message,
         type: notificationForm.type,
@@ -185,31 +204,63 @@ const FacultyNotifications = () => {
         </button>
       </div>
 
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <div className="flex space-x-8">
+          <button
+            onClick={() => setActiveTab('inbox')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'inbox'
+                ? 'border-green-600 text-green-600 dark:text-green-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+            }`}
+          >
+            Inbox ({unreadCount} unread)
+          </button>
+          <button
+            onClick={() => setActiveTab('sent')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'sent'
+                ? 'border-green-600 text-green-600 dark:text-green-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+            }`}
+          >
+            Sent ({sentNotifications.length})
+          </button>
+        </div>
+      </div>
+
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {notifications.length === 0 ? (
+        {(activeTab === 'inbox' ? notifications : sentNotifications).length === 0 ? (
           <div className="p-12 text-center">
             <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No notifications
+              {activeTab === 'inbox' ? 'No notifications' : 'No sent notifications'}
             </h3>
             <p className="text-gray-500 dark:text-gray-400">
-              You're all caught up! ({unreadCount} unread)
+              {activeTab === 'inbox' ? "You're all caught up!" : 'Send your first notification to students'}
             </p>
           </div>
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {notifications.map((notif) => (
+            {(activeTab === 'inbox' ? notifications : sentNotifications).map((notif) => (
               <div
                 key={notif.id}
                 className={`p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
-                  !notif.is_read ? 'bg-green-50/50 dark:bg-green-900/10' : ''
+                  activeTab === 'inbox' && !notif.is_read ? 'bg-green-50/50 dark:bg-green-900/10' : ''
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      {notif.title}
-                    </h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {notif.title}
+                      </h3>
+                      {activeTab === 'sent' && (
+                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full">
+                          Sent
+                        </span>
+                      )}
+                    </div>
                     <p className="text-gray-600 dark:text-gray-400 mb-3">
                       {notif.message}
                     </p>
@@ -218,9 +269,15 @@ const FacultyNotifications = () => {
                         <Calendar className="h-4 w-4 mr-1" />
                         {new Date(notif.created_at).toLocaleDateString('en-IN')}
                       </div>
+                      {activeTab === 'sent' && notif.users && (
+                        <div className="flex items-center">
+                          <Users className="h-4 w-4 mr-1" />
+                          To: {notif.users.first_name} {notif.users.last_name}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {!notif.is_read && (
+                  {activeTab === 'inbox' && !notif.is_read && (
                     <button
                       onClick={() => markAsRead(notif.id)}
                       className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
