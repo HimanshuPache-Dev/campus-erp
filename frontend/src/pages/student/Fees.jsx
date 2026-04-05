@@ -59,7 +59,13 @@ const StudentFees = () => {
     }, 0);
     
     const paidFees = feeData.reduce((sum, f) => {
-      const paid = parseFloat(f.amount_paid) || 0;
+      let paid = parseFloat(f.amount_paid) || 0;
+      
+      // If status is 'paid', amount_paid should equal amount
+      if (f.status === 'paid' && paid === 0) {
+        paid = parseFloat(f.amount) || 0;
+      }
+      
       return sum + paid;
     }, 0);
     
@@ -219,7 +225,13 @@ const StudentFees = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {feeData.map((fee, index) => {
                 const amount = parseFloat(fee.amount) || 0;
-                const amountPaid = parseFloat(fee.amount_paid) || 0;
+                let amountPaid = parseFloat(fee.amount_paid) || 0;
+                
+                // If status is 'paid', amount_paid should equal amount
+                if (fee.status === 'paid' && amountPaid === 0) {
+                  amountPaid = amount;
+                }
+                
                 const pending = Math.max(0, amount - amountPaid);
                 
                 return (
