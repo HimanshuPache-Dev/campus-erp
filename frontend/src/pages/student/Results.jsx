@@ -44,7 +44,8 @@ const StudentResults = () => {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
+      // Build query
+      let query = supabase
         .from('results')
         .select(`
           *,
@@ -54,10 +55,17 @@ const StudentResults = () => {
             credits
           )
         `)
-        .eq('student_id', user.id)
-        .eq('semester_type', selectedSemester === 'current' ? semester : `Semester ${selectedSemester}`)
-        .eq('academic_year', academicYear)
-        .order('created_at', { ascending: false });
+        .eq('student_id', user.id);
+
+      // Filter by semester_type based on selection
+      if (selectedSemester === 'current') {
+        query = query.eq('semester_type', semester);
+      }
+      // 'all' shows all semesters, no filter needed
+
+      query = query.order('created_at', { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -72,12 +80,7 @@ const StudentResults = () => {
 
   const semesterOptions = [
     { value: 'current', label: 'Current Semester' },
-    { value: '1', label: 'Semester 1' },
-    { value: '2', label: 'Semester 2' },
-    { value: '3', label: 'Semester 3' },
-    { value: '4', label: 'Semester 4' },
-    { value: '5', label: 'Semester 5' },
-    { value: '6', label: 'Semester 6' },
+    { value: 'all', label: 'All Semesters' },
   ];
 
   const CustomTooltip = ({ active, payload, label }) => {
