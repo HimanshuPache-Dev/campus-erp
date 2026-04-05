@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Download, Eye, CheckCircle, XCircle, CreditCard, DollarSign } from 'lucide-react';
+import { Search, Plus, CheckCircle } from 'lucide-react';
 import { useDatabaseData } from '../../hooks/useDatabaseData';
 import { supabase } from '../../config/supabase';
+import { useNavigate } from 'react-router-dom';
 import { SkeletonStats, SkeletonTable } from '../../components/common/SkeletonLoader';
 import { staggerContainer, staggerItem } from '../../animations/variants';
 import CountUp from '../../components/common/CountUp';
@@ -16,6 +17,7 @@ const statusColors = {
 };
 
 const Fees = () => {
+  const navigate = useNavigate();
   const { fees, loading, refreshData } = useDatabaseData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -59,9 +61,18 @@ const Fees = () => {
 
   return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Fees Management</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Track and manage student fees</p>
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Fees Management</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Track and manage student fees</p>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+          onClick={() => navigate('/admin/fees/assign')}
+          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        >
+          <Plus className="h-4 w-4 mr-2" /> Assign Fees
+        </motion.button>
       </motion.div>
 
       {loading ? <SkeletonStats /> : (

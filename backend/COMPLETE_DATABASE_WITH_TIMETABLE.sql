@@ -276,6 +276,21 @@ VALUES
 ('a56ed74b-3c6c-4c19-8865-a38b5cc373b8', 'c56ed74b-3c6c-4c19-8865-a38b5cc373c2', '2025-26', 'Winter'),
 ('b56ed74b-3c6c-4c19-8865-a38b5cc373b9', 'c56ed74b-3c6c-4c19-8865-a38b5cc373c1', '2025-26', 'Winter');
 
+-- Insert sample fees
+INSERT INTO fees (student_id, fee_type, amount, due_date, status, academic_year, semester_type)
+VALUES 
+-- Rahul Sharma fees
+('956ed74b-3c6c-4c19-8865-a38b5cc373b7', 'Tuition Fee', 48000, '2026-05-01', 'pending', '2025-26', 'Winter'),
+('956ed74b-3c6c-4c19-8865-a38b5cc373b7', 'Library Fee', 2000, '2026-05-01', 'paid', '2025-26', 'Winter'),
+('956ed74b-3c6c-4c19-8865-a38b5cc373b7', 'Lab Fee', 5000, '2026-05-01', 'pending', '2025-26', 'Winter'),
+-- Priya Patel fees
+('a56ed74b-3c6c-4c19-8865-a38b5cc373b8', 'Tuition Fee', 48000, '2026-05-01', 'paid', '2025-26', 'Winter'),
+('a56ed74b-3c6c-4c19-8865-a38b5cc373b8', 'Library Fee', 2000, '2026-05-01', 'paid', '2025-26', 'Winter'),
+('a56ed74b-3c6c-4c19-8865-a38b5cc373b8', 'Lab Fee', 5000, '2026-05-01', 'paid', '2025-26', 'Winter'),
+-- Amit Verma fees
+('b56ed74b-3c6c-4c19-8865-a38b5cc373b9', 'Tuition Fee', 48000, '2026-04-15', 'overdue', '2025-26', 'Winter'),
+('b56ed74b-3c6c-4c19-8865-a38b5cc373b9', 'Library Fee', 2000, '2026-04-15', 'overdue', '2025-26', 'Winter');
+
 -- Insert timetable slots
 INSERT INTO timetable_slots (course_id, faculty_id, day_of_week, start_time, end_time, room_number, semester, academic_year, semester_type)
 VALUES 
@@ -299,4 +314,5 @@ SELECT '' as blank2;
 SELECT 'STATISTICS:' as stats;
 SELECT 'Users: ' || COUNT(*) as count FROM users;
 SELECT 'Courses: ' || COUNT(*) as count FROM courses;
+SELECT 'Fees: ' || COUNT(*) as count FROM fees;
 SELECT 'Timetable Slots: ' || COUNT(*) as count FROM timetable_slots;

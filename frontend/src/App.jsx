@@ -30,6 +30,7 @@ import Attendance from './pages/admin/Attendance';
 import Reports from './pages/admin/Reports';
 import Results from './pages/admin/Results';
 import Fees from './pages/admin/Fees';
+import AssignFees from './pages/admin/AssignFees';
 import Analytics from './pages/admin/Analytics';
 import Settings from './pages/admin/Settings';
 import Notifications from './pages/admin/Notifications';
@@ -147,6 +148,7 @@ function AppRoutes() {
         <Route path="results/add" element={<div>Add Result</div>} />
         <Route path="results/:id/edit" element={<div>Edit Result</div>} />
         <Route path="fees" element={<Fees />} />
+        <Route path="fees/assign" element={<AssignFees />} />
         <Route path="fees/:id" element={<div>Fee Details</div>} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<Settings />} />
