@@ -24,10 +24,8 @@ const FacultyAttendance = () => {
   const { semester, academicYear } = useSemester();
   const navigate = useNavigate();
   const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const selectedCourseCode = queryParams.get('course') || '';
 
-  const [selectedCourse, setSelectedCourse] = useState(selectedCourseCode);
+  const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [attendanceData, setAttendanceData] = useState([]);
