@@ -39,7 +39,6 @@ const StudentFees = () => {
         .from('fees')
         .select('*')
         .eq('student_id', user.id)
-        .eq('academic_year', selectedYear)
         .order('due_date', { ascending: true });
 
       if (error) throw error;
@@ -213,9 +212,9 @@ const StudentFees = () => {
                   <td className="px-6 py-4 text-right text-green-600">₹{fee.amount_paid.toLocaleString()}</td>
                   <td className="px-6 py-4 text-right text-red-600">₹{(fee.amount - fee.amount_paid).toLocaleString()}</td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(fee.payment_status)}`}>
-                      {getStatusIcon(fee.payment_status)}
-                      <span className="ml-1 capitalize">{fee.payment_status}</span>
+                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(fee.status)}`}>
+                      {getStatusIcon(fee.status)}
+                      <span className="ml-1 capitalize">{fee.status}</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 text-center text-sm text-gray-600 dark:text-gray-400">
