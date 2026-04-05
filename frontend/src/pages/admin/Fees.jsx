@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, Download, Eye, CheckCircle, XCircle, CreditCard, DollarSign } from 'lucide-react';
-import { feesAPI } from '../../services/api';
+import { useDatabaseData } from '../../hooks/useDatabaseData';
+import { supabase } from '../../config/supabase';
 import { SkeletonStats, SkeletonTable } from '../../components/common/SkeletonLoader';
 import { staggerContainer, staggerItem } from '../../animations/variants';
 import CountUp from '../../components/common/CountUp';
@@ -15,32 +16,28 @@ const statusColors = {
 };
 
 const Fees = () => {
-  const [fees, setFees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { fees, loading, refreshData } = useDatabaseData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [totalPending, setTotalPending] = useState(0);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await feesAPI.getPending();
-        setFees(res.fees || []);
-        setTotalPending(res.totalPending || 0);
-      } catch (e) {
-        toast.error('Failed to load fees');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+  const totalPending = fees
+    .filter(f => f.status === 'pending' || f.status === 'overdue')
+    .reduce((sum, f) => sum + (f.amount || 0), 0);
 
   const handleMarkPaid = async (id) => {
     try {
-      await feesAPI.updateStatus(id, { status: 'paid', payment_method: 'manual' });
-      setFees(prev => prev.map(f => f.id === id ? { ...f, status: 'paid' } : f));
+      const { error } = await supabase
+        .from('fees')
+        .update({ 
+          status: 'paid', 
+          payment_method: 'manual',
+          paid_date: new Date().toISOString().split('T')[0]
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
       toast.success('Fee marked as paid');
+      refreshData();
     } catch (e) {
       toast.error('Failed to update fee');
     }

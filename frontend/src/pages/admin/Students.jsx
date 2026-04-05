@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { SkeletonTable } from '../../components/common/SkeletonLoader';
 import { staggerContainer, staggerItem } from '../../animations/variants';
 import toast from 'react-hot-toast';
-import { studentsAPI } from '../../services/api';
+import { supabase } from '../../config/supabase';
 
 const Students = () => {
   const { students, loading, refreshData } = useDatabaseData();
@@ -23,7 +23,12 @@ const Students = () => {
     if (!window.confirm(`Delete ${name}?`)) return;
     setDeletingId(id);
     try {
-      await studentsAPI.delete(id);
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
       toast.success('Student deleted');
       refreshData();
     } catch (e) {
