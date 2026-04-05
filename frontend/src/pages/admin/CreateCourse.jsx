@@ -323,7 +323,7 @@ const CreateCourse = () => {
   };
 
   // Handle Create Course
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validate required fields
@@ -332,22 +332,47 @@ const CreateCourse = () => {
       return;
     }
 
-    const selectedFacultyMember = facultyList.find(f => f.id.toString() === formData.facultyInfo.assignedFaculty);
+    try {
+      const selectedFacultyMember = facultyList.find(f => f.id.toString() === formData.facultyInfo.assignedFaculty);
 
-    const courseData = {
-      ...formData,
-      id: id || Date.now(),
-      createdAt: new Date().toISOString(),
-      status: 'active',
-      notifications: notifications,
-      exams: exams,
-      assignedFacultyName: selectedFacultyMember?.name,
-      assignedFacultyDept: selectedFacultyMember?.department
-    };
+      // Prepare course data for Supabase
+      const courseData = {
+        course_code: formData.basicInfo.courseCode,
+        course_name: formData.basicInfo.courseName,
+        department: formData.basicInfo.department,
+        semester: parseInt(formData.basicInfo.semester),
+        credits: parseInt(formData.basicInfo.credits),
+        faculty_id: formData.facultyInfo.assignedFaculty,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
-    console.log('Course Created:', courseData);
-    toast.success('Course created successfully!');
-    navigate('/admin/courses');
+      console.log('📤 Creating course:', courseData);
+
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from('courses')
+        .insert([courseData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error creating course:', error);
+        if (error.code === '23505') {
+          toast.error('Course code already exists');
+        } else {
+          toast.error('Failed to create course: ' + error.message);
+        }
+        return;
+      }
+
+      console.log('✅ Course created:', data);
+      toast.success('Course created successfully!');
+      navigate('/admin/courses');
+    } catch (error) {
+      console.error('❌ Error:', error);
+      toast.error('Failed to create course');
+    }
   };
 
   const tabs = [

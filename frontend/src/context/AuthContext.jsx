@@ -68,15 +68,53 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Simple password validation
-      // For demo: admin123, faculty123, student123
-      const validPasswords = {
-        'admin': 'admin123',
-        'faculty': 'faculty123',
-        'student': 'student123'
-      };
+      // Check if user has a custom password (password_reset_required is false)
+      // Otherwise use default passwords or temporary password
+      let isPasswordValid = false;
+      
+      console.log('🔐 Password validation:', {
+        password_reset_required: users.password_reset_required,
+        has_password_hash: !!users.password_hash,
+        has_temporary_password: !!users.temporary_password,
+        role: users.role
+      });
+      
+      if (!users.password_reset_required && users.password_hash) {
+        // User has set their own password
+        isPasswordValid = (password === users.password_hash);
+        console.log('✓ Checking custom password');
+      } else if (users.password_reset_required) {
+        // First-time login - check temporary password OR default password
+        if (users.temporary_password && password === users.temporary_password) {
+          isPasswordValid = true;
+          console.log('✓ Temporary password matched');
+        } else {
+          // Fallback to default passwords for existing users
+          const validPasswords = {
+            'admin': 'admin123',
+            'faculty': 'faculty123',
+            'student': 'student123'
+          };
+          if (password === validPasswords[users.role]) {
+            isPasswordValid = true;
+            console.log('✓ Default password matched');
+          }
+        }
+      } else {
+        // No password_reset_required flag - use default passwords
+        const validPasswords = {
+          'admin': 'admin123',
+          'faculty': 'faculty123',
+          'student': 'student123'
+        };
+        if (password === validPasswords[users.role] || password === users.password_hash) {
+          isPasswordValid = true;
+          console.log('✓ Default/stored password matched');
+        }
+      }
 
-      if (password !== validPasswords[users.role]) {
-        console.error('❌ Invalid password');
+      if (!isPasswordValid) {
+        console.error('❌ Invalid password - no match found');
         toast.error('Invalid email or password');
         setLoading(false);
         return { success: false };
@@ -102,7 +140,10 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', 'supabase-session');
         setUser(userData);
         
-        toast.info('Please change your password to continue');
+        toast.success('Please change your password to continue', {
+          icon: '🔒',
+          duration: 4000
+        });
         navigate('/change-password', { replace: true });
         setLoading(false);
         return { success: true, passwordResetRequired: true };

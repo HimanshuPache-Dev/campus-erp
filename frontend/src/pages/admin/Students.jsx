@@ -125,11 +125,11 @@ const Students = () => {
                         <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{student.department || '—'}</td>
                         <td className="px-6 py-4">
                           <span className="px-2 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full">
-                            Sem {student.student_details?.current_semester || student.currentSemester || '—'}
+                            Sem {student.student_details?.[0]?.current_semester || student.currentSemester || '—'}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                          {student.student_details?.enrollment_number || student.enrollment_number || '—'}
+                          {student.student_details?.[0]?.enrollment_number || student.enrollment_number || '—'}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">

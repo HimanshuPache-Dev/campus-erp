@@ -51,9 +51,16 @@ export const useDatabaseData = () => {
           .from('users')
           .select(`
             *,
-            student_details (*)
+            student_details (
+              enrollment_number,
+              current_semester,
+              batch_year,
+              guardian_name,
+              guardian_phone
+            )
           `)
-          .eq('role', 'student'),
+          .eq('role', 'student')
+          .order('created_at', { ascending: false }),
         
         // Faculty with their details
         supabase

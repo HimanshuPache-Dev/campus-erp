@@ -60,20 +60,28 @@ const StudentTimetable = () => {
         return;
       }
 
-      // Fetch timetable slots for enrolled courses (don't filter by semester)
+      // Fetch timetable slots for enrolled courses
       const { data: slotsData, error: slotsError } = await supabase
-        .from('timetable_slots')
+        .from('timetable')
         .select(`
           *,
-          courses (course_code, course_name, credits),
-          users:faculty_id (first_name, last_name)
+          courses (
+            course_code,
+            course_name,
+            credits,
+            department,
+            faculty_id
+          )
         `)
         .in('course_id', courseIds)
-        .eq('is_active', true)
-        .order('day_of_week')
         .order('start_time');
 
-      if (slotsError) throw slotsError;
+      if (slotsError) {
+        console.error('Timetable error:', slotsError);
+        throw slotsError;
+      }
+
+      console.log('Timetable data:', slotsData);
 
       // Organize slots by day
       const organized = {};
@@ -175,12 +183,8 @@ const StudentTimetable = () => {
                               {slot.courses?.course_name}
                             </div>
                             <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-2">
-                              <User className="h-3 w-3 mr-1" />
-                              {slot.users?.first_name} {slot.users?.last_name}
-                            </div>
-                            <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
                               <MapPin className="h-3 w-3 mr-1" />
-                              {slot.room_number}
+                              {slot.room_number || 'TBA'}
                             </div>
                             <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
                               <Clock className="h-3 w-3 mr-1" />

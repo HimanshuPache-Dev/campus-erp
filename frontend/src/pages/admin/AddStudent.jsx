@@ -388,6 +388,20 @@ const AddStudent = () => {
     };
   };
 
+  // Generate temporary password
+  const generateTemporaryPassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]; // uppercase
+    password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]; // lowercase
+    password += '0123456789'[Math.floor(Math.random() * 10)]; // number
+    password += '!@#$%^&*'[Math.floor(Math.random() * 8)]; // special char
+    for (let i = 4; i < 12; i++) {
+      password += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -403,38 +417,142 @@ const AddStudent = () => {
       const studentData = prepareStudentData();
       console.log('📤 Submitting student data:', studentData);
 
-      // Call API to create student
-      const response = await studentsAPI.create(studentData);
-      
-      console.log('✅ Student created:', response.data);
-      
-      // Upload documents if any (you'll need a separate API for documents)
-      if (documents.length > 0) {
-        // Upload documents logic here
-        // You might need a separate API endpoint for document upload
-        console.log('📎 Documents to upload:', documents);
-        toast.success('Documents will be uploaded separately');
+      // Generate temporary password
+      const temporaryPassword = generateTemporaryPassword();
+
+      // Create user in Supabase
+      const { data: newUser, error: userError } = await supabase
+        .from('users')
+        .insert([{
+          email: formData.contactInfo.studentEmail,
+          password_hash: temporaryPassword, // Temporary password
+          first_name: formData.personalInfo.firstName,
+          last_name: formData.personalInfo.lastName,
+          role: 'student',
+          department: formData.basicInfo.course,
+          phone: formData.contactInfo.studentPhone,
+          address: formData.contactInfo.presentAddress,
+          date_of_birth: formData.personalInfo.dateOfBirth,
+          gender: formData.personalInfo.gender,
+          is_active: true,
+          password_reset_required: true,
+          temporary_password: temporaryPassword
+        }])
+        .select()
+        .single();
+
+      if (userError) {
+        console.error('❌ Error creating user:', userError);
+        if (userError.code === '23505') {
+          toast.error('Email already exists');
+        } else {
+          toast.error('Failed to create user: ' + userError.message);
+        }
+        setSubmitting(false);
+        return;
       }
 
-      // Upload image if any
-      if (imagePreview) {
-        // Upload image logic here
-        console.log('🖼️ Image to upload');
+      console.log('✅ User created:', newUser);
+
+      // Create student details
+      const { error: detailsError } = await supabase
+        .from('student_details')
+        .insert([{
+          user_id: newUser.id,
+          enrollment_number: formData.basicInfo.enrollmentNo,
+          current_semester: parseInt(formData.basicInfo.semester),
+          batch_year: parseInt(academicYear),
+          guardian_name: formData.parentInfo.fatherName,
+          guardian_phone: formData.parentInfo.fatherPhone,
+          guardian_email: formData.parentInfo.fatherEmail,
+          admission_date: formData.basicInfo.admissionDate
+        }]);
+
+      if (detailsError) {
+        console.error('❌ Error creating student details:', detailsError);
+        // Rollback user creation
+        await supabase.from('users').delete().eq('id', newUser.id);
+        toast.error('Failed to create student details');
+        setSubmitting(false);
+        return;
       }
 
-      toast.success('Student added successfully!');
-      navigate('/admin/students');
+      // Auto-enroll student in semester courses
+      const studentSemester = parseInt(formData.basicInfo.semester);
+      const studentDepartment = formData.basicInfo.course;
+
+      console.log(`📚 Auto-enrolling student in semester ${studentSemester} ${studentDepartment} courses...`);
+
+      // Fetch courses for student's semester and department
+      const { data: semesterCourses, error: coursesError } = await supabase
+        .from('courses')
+        .select('id')
+        .eq('semester', studentSemester)
+        .eq('department', studentDepartment);
+
+      if (coursesError) {
+        console.error('⚠️ Error fetching courses:', coursesError);
+      } else if (semesterCourses && semesterCourses.length > 0) {
+        // Enroll student in all semester courses
+        const enrollments = semesterCourses.map(course => ({
+          student_id: newUser.id,
+          course_id: course.id,
+          enrollment_date: new Date().toISOString().split('T')[0],
+          status: 'active'
+        }));
+
+        const { error: enrollError } = await supabase
+          .from('student_enrollments')
+          .insert(enrollments);
+
+        if (enrollError) {
+          console.error('⚠️ Error enrolling student:', enrollError);
+          toast.error('Student created but enrollment failed. Please enroll manually.');
+        } else {
+          console.log(`✅ Student enrolled in ${semesterCourses.length} courses`);
+        }
+      } else {
+        console.log('⚠️ No courses found for this semester/department');
+        toast.error('Student created but no courses found. Please add courses first.');
+      }
+
+      // Copy password to clipboard
+      try {
+        await navigator.clipboard.writeText(temporaryPassword);
+        console.log('📋 Password copied to clipboard');
+      } catch (err) {
+        console.log('⚠️ Could not copy to clipboard:', err);
+      }
+
+      // Show temporary password to admin with copy button
+      toast.success(
+        <div className="max-w-md">
+          <p className="font-bold text-base mb-2">✅ Student Added Successfully!</p>
+          <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-2">
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Temporary Password:</p>
+            <p className="font-mono font-bold text-lg text-blue-600 dark:text-blue-400 break-all">{temporaryPassword}</p>
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">✓ Password copied to clipboard</p>
+          <p className="text-xs text-yellow-600 dark:text-yellow-400">⚠️ Share this with the student. They must change it on first login.</p>
+        </div>,
+        { 
+          duration: 15000,
+          style: {
+            maxWidth: '500px'
+          }
+        }
+      );
+
+      console.log('🔑 Temporary Password:', temporaryPassword);
+      console.log('📧 Student Email:', formData.contactInfo.studentEmail);
+      
+      // Navigate to students list after delay
+      setTimeout(() => {
+        navigate('/admin/students');
+      }, 15000);
     } catch (error) {
       console.error('❌ Error creating student:', error);
-      
-      // Handle specific error cases
-      if (error.response?.status === 409) {
-        toast.error('Enrollment number or email already exists');
-      } else if (error.response?.status === 400) {
-        toast.error(error.response.data?.error || 'Invalid data provided');
-      } else {
-        toast.error('Failed to add student. Please try again.');
-      }
+      toast.error('Failed to add student. Please try again.');
     } finally {
       setSubmitting(false);
     }

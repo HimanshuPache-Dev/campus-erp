@@ -55,7 +55,24 @@ const StudentAttendance = () => {
     try {
       setLoading(true);
 
-      // Fetch attendance records
+      // Fetch student's enrolled courses first
+      const { data: enrollments, error: enrollError } = await supabase
+        .from('student_enrollments')
+        .select('course_id')
+        .eq('student_id', user.id);
+
+      if (enrollError) throw enrollError;
+
+      const courseIds = enrollments?.map(e => e.course_id) || [];
+
+      if (courseIds.length === 0) {
+        setAttendanceData([]);
+        setCourses([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch attendance records for enrolled courses
       const { data: attendance, error } = await supabase
         .from('attendance')
         .select(`
@@ -66,20 +83,22 @@ const StudentAttendance = () => {
           )
         `)
         .eq('student_id', user.id)
-        .eq('semester_type', semester)
-        .eq('academic_year', academicYear)
+        .in('course_id', courseIds)
         .order('date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Attendance error:', error);
+        throw error;
+      }
 
+      console.log('Attendance data:', attendance);
       setAttendanceData(attendance || []);
 
       // Get unique courses
-      const uniqueCourses = [...new Set(attendance?.map(a => a.course_id))];
       const { data: coursesData } = await supabase
         .from('courses')
         .select('*')
-        .in('id', uniqueCourses);
+        .in('id', courseIds);
 
       setCourses(coursesData || []);
     } catch (error) {

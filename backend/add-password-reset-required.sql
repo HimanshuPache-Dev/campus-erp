@@ -11,10 +11,15 @@ ADD COLUMN IF NOT EXISTS password_reset_required BOOLEAN DEFAULT false;
 ALTER TABLE users 
 ADD COLUMN IF NOT EXISTS temporary_password VARCHAR(255);
 
--- Set existing students and faculty to require password reset
+-- Set existing students and faculty to require password reset (NOT admin)
 UPDATE users 
 SET password_reset_required = true 
 WHERE role IN ('student', 'faculty');
+
+-- Ensure admin does NOT require password reset
+UPDATE users 
+SET password_reset_required = false 
+WHERE role = 'admin';
 
 -- Verify the change
 SELECT '✅ password_reset_required column added successfully!' as message;

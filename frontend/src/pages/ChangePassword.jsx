@@ -61,10 +61,11 @@ const ChangePassword = () => {
     try {
       setLoading(true);
 
-      // Update password_reset_required flag
+      // Update password and reset flags
       const { error: updateError } = await supabase
         .from('users')
         .update({ 
+          password_hash: formData.newPassword, // Update the actual password
           password_reset_required: false,
           temporary_password: null
         })

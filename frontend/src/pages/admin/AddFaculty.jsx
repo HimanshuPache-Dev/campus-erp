@@ -25,7 +25,8 @@ import {
   Globe,
   Languages,
   Star,
-  Clock
+  Clock,
+  Loader
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -37,6 +38,7 @@ const AddFaculty = () => {
   const [documents, setDocuments] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchDepartments();
@@ -287,8 +289,22 @@ const AddFaculty = () => {
     }));
   };
 
+  // Generate temporary password
+  const generateTemporaryPassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]; // uppercase
+    password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]; // lowercase
+    password += '0123456789'[Math.floor(Math.random() * 10)]; // number
+    password += '!@#$%^&*'[Math.floor(Math.random() * 8)]; // special char
+    for (let i = 4; i < 12; i++) {
+      password += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  };
+
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validate required fields
@@ -309,12 +325,86 @@ const AddFaculty = () => {
       return;
     }
 
-    console.log('Form Data:', formData);
-    console.log('Documents:', documents);
-    console.log('Faculty Image:', imagePreview);
+    setLoading(false);
 
-    toast.success('Faculty added successfully!');
-    navigate('/admin/faculty');
+    try {
+      // Generate temporary password
+      const temporaryPassword = generateTemporaryPassword();
+
+      // Create user in Supabase
+      const { data: newUser, error: userError } = await supabase
+        .from('users')
+        .insert([{
+          email: formData.contactInfo.officialEmail,
+          password_hash: temporaryPassword, // Temporary password
+          first_name: formData.personalInfo.firstName,
+          last_name: formData.personalInfo.lastName,
+          role: 'faculty',
+          department: formData.employeeInfo.department,
+          phone: formData.contactInfo.officialPhone,
+          address: formData.contactInfo.presentAddress,
+          date_of_birth: formData.personalInfo.dateOfBirth,
+          gender: formData.personalInfo.gender,
+          is_active: true,
+          password_reset_required: true,
+          temporary_password: temporaryPassword
+        }])
+        .select()
+        .single();
+
+      if (userError) {
+        console.error('❌ Error creating user:', userError);
+        if (userError.code === '23505') {
+          toast.error('Email already exists');
+        } else {
+          toast.error('Failed to create user: ' + userError.message);
+        }
+        setSubmitting(false);
+        return;
+      }
+
+      console.log('✅ Faculty user created:', newUser);
+
+      // Copy password to clipboard
+      try {
+        await navigator.clipboard.writeText(temporaryPassword);
+        console.log('📋 Password copied to clipboard');
+      } catch (err) {
+        console.log('⚠️ Could not copy to clipboard:', err);
+      }
+
+      // Show temporary password to admin with copy confirmation
+      toast.success(
+        <div className="max-w-md">
+          <p className="font-bold text-base mb-2">✅ Faculty Added Successfully!</p>
+          <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-2">
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Temporary Password:</p>
+            <p className="font-mono font-bold text-lg text-blue-600 dark:text-blue-400 break-all">{temporaryPassword}</p>
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">✓ Password copied to clipboard</p>
+          <p className="text-xs text-yellow-600 dark:text-yellow-400">⚠️ Share this with the faculty member. They must change it on first login.</p>
+        </div>,
+        { 
+          duration: 15000,
+          style: {
+            maxWidth: '500px'
+          }
+        }
+      );
+
+      console.log('🔑 Temporary Password:', temporaryPassword);
+      console.log('📧 Faculty Email:', formData.contactInfo.officialEmail);
+      
+      // Navigate after a delay to allow admin to see the password
+      setTimeout(() => {
+        navigate('/admin/faculty');
+      }, 15000);
+    } catch (error) {
+      console.error('❌ Error creating faculty:', error);
+      toast.error('Failed to add faculty. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const tabs = [
@@ -349,10 +439,20 @@ const AddFaculty = () => {
         </div>
         <button
           onClick={handleSubmit}
-          className="inline-flex items-center px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          disabled={submitting}
+          className="inline-flex items-center px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Save className="h-4 w-4 mr-2" />
-          Save Faculty
+          {submitting ? (
+            <>
+              <Loader className="h-4 w-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Save Faculty
+            </>
+          )}
         </button>
       </div>
 
