@@ -78,33 +78,64 @@ const FacultyResults = () => {
 
   const fetchResults = async () => {
     try {
-      const { data, error } = await supabase
-        .from('results')
+      // First, get all students enrolled in this course
+      const { data: enrollments, error: enrollError } = await supabase
+        .from('student_enrollments')
         .select(`
-          *,
-          users!student_id (
+          student_id,
+          users (
+            id,
             first_name,
             last_name,
-            email
+            email,
+            student_details (
+              enrollment_number
+            )
           )
         `)
+        .eq('course_id', selectedCourse);
+
+      if (enrollError) throw enrollError;
+
+      // Then, get existing results for these students
+      const { data: existingResults, error: resultsError } = await supabase
+        .from('results')
+        .select('*')
         .eq('course_id', selectedCourse)
         .eq('exam_type', selectedExamType)
         .eq('semester_type', semester)
         .eq('academic_year', academicYear);
 
-      if (error) throw error;
+      if (resultsError) throw resultsError;
 
-      const formattedData = (data || []).map(r => ({
-        id: r.student_id,
-        name: `${r.users.first_name} ${r.users.last_name}`,
-        enrollment: r.users.email,
-        marks: r.marks_obtained,
-        total: r.total_marks,
-        percentage: ((r.marks_obtained / r.total_marks) * 100).toFixed(1),
-        grade: r.grade,
-        status: r.marks_obtained >= (r.total_marks * 0.4) ? 'passed' : 'failed'
-      }));
+      // Create a map of existing results
+      const resultsMap = {};
+      (existingResults || []).forEach(r => {
+        resultsMap[r.student_id] = r;
+      });
+
+      // Combine enrollments with results
+      const formattedData = (enrollments || [])
+        .filter(e => e.users) // Filter out null users
+        .map(e => {
+          const user = e.users;
+          const existingResult = resultsMap[user.id];
+          
+          return {
+            id: user.id,
+            name: `${user.first_name} ${user.last_name}`,
+            enrollment: user.student_details?.[0]?.enrollment_number || user.email,
+            marks: existingResult?.marks_obtained || 0,
+            total: existingResult?.total_marks || 100,
+            percentage: existingResult 
+              ? ((existingResult.marks_obtained / existingResult.total_marks) * 100).toFixed(1)
+              : '0.0',
+            grade: existingResult?.grade || 'N/A',
+            status: existingResult 
+              ? (existingResult.marks_obtained >= (existingResult.total_marks * 0.4) ? 'passed' : 'failed')
+              : 'pending'
+          };
+        });
 
       setResultsData(formattedData);
     } catch (error) {
@@ -433,10 +464,15 @@ const FacultyResults = () => {
                             <CheckCircle className="h-3 w-3 mr-1" />
                             Passed
                           </span>
-                        ) : (
+                        ) : student.status === 'failed' ? (
                           <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded-full">
                             <XCircle className="h-3 w-3 mr-1" />
                             Failed
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400 rounded-full">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Pending
                           </span>
                         )}
                       </td>
