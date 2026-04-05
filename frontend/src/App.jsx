@@ -19,6 +19,8 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import AdminDashboard from './pages/admin/Dashboard';
 import Students from './pages/admin/Students';
 import AddStudent from './pages/admin/AddStudent';
+import ViewStudent from './pages/admin/ViewStudent';
+import EditStudent from './pages/admin/EditStudent';
 import Alerts from './pages/admin/Alerts';
 import Faculty from './pages/admin/Faculty';
 import AddFaculty from './pages/admin/AddFaculty';
@@ -127,8 +129,8 @@ function AppRoutes() {
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="students" element={<Students />} />
         <Route path="students/add" element={<AddStudent />} />
-        <Route path="students/:id" element={<div>Student Details</div>} />
-        <Route path="students/:id/edit" element={<div>Edit Student</div>} />
+        <Route path="students/:id" element={<ViewStudent />} />
+        <Route path="students/:id/edit" element={<EditStudent />} />
         <Route path="faculty" element={<Faculty />} />
         <Route path="faculty/add" element={<AddFaculty />} />
         <Route path="faculty/:id" element={<div>Faculty Details</div>} />
