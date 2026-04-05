@@ -77,7 +77,7 @@ const StudentDashboard = () => {
         // Fetch attendance data
         const { data: attendanceRecords } = await supabase
           .from('attendance')
-          .select('status, course_id, courses(name)')
+          .select('status, course_id, courses(course_name)')
           .eq('student_id', user.id);
 
         // Calculate overall attendance
@@ -88,7 +88,7 @@ const StudentDashboard = () => {
         // Group attendance by course
         const courseAttendance = {};
         attendanceRecords?.forEach(record => {
-          const courseName = record.courses?.name || 'Unknown';
+          const courseName = record.courses?.course_name || 'Unknown';
           if (!courseAttendance[courseName]) {
             courseAttendance[courseName] = { present: 0, total: 0 };
           }
@@ -129,17 +129,17 @@ const StudentDashboard = () => {
         // Fetch fees
         const { data: feesData } = await supabase
           .from('fees')
-          .select('amount, paid_amount')
+          .select('amount, amount_paid')
           .eq('student_id', user.id);
 
-        const totalFees = feesData?.reduce((sum, f) => sum + f.amount, 0) || 0;
-        const paidFees = feesData?.reduce((sum, f) => sum + f.paid_amount, 0) || 0;
+        const totalFees = feesData?.reduce((sum, f) => sum + (f.amount || 0), 0) || 0;
+        const paidFees = feesData?.reduce((sum, f) => sum + (f.amount_paid || 0), 0) || 0;
 
         // Fetch notifications
         const { data: notificationsData } = await supabase
           .from('notifications')
           .select('*')
-          .or(`target_role.eq.student,target_role.eq.all`)
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(3);
 
