@@ -139,7 +139,7 @@ const StudentDashboard = () => {
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const today = daysOfWeek[new Date().getDay()];
 
-        // Get student's enrolled courses
+        // Get student's enrolled courses (all courses, not just current academic year)
         const { data: enrolledCourses } = await supabase
           .from('student_enrollments')
           .select('course_id')

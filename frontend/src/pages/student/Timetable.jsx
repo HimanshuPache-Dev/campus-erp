@@ -43,27 +43,24 @@ const StudentTimetable = () => {
     try {
       setLoading(true);
 
-      // Fetch student's current semester
-      const { data: studentData } = await supabase
-        .from('student_details')
-        .select('current_semester')
-        .eq('user_id', user.id)
-        .single();
-
-      const currentSemester = studentData?.current_semester || 1;
-
-      // Fetch enrolled courses
+      // Fetch enrolled courses for current academic year
       const { data: enrollments, error: enrollError } = await supabase
         .from('student_enrollments')
         .select('course_id')
-        .eq('student_id', user.id)
-        .eq('academic_year', academicYear);
+        .eq('student_id', user.id);
 
       if (enrollError) throw enrollError;
 
       const courseIds = enrollments?.map(e => e.course_id) || [];
 
-      // Fetch timetable slots for enrolled courses
+      if (courseIds.length === 0) {
+        setScheduleData({});
+        setCourses([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch timetable slots for enrolled courses (don't filter by semester)
       const { data: slotsData, error: slotsError } = await supabase
         .from('timetable_slots')
         .select(`
@@ -72,7 +69,6 @@ const StudentTimetable = () => {
           users:faculty_id (first_name, last_name)
         `)
         .in('course_id', courseIds)
-        .eq('semester', currentSemester)
         .eq('is_active', true)
         .order('day_of_week')
         .order('start_time');
