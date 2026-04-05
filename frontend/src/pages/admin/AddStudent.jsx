@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSemester } from '../../context/SemesterContext';
-import { studentsAPI } from '../../services/api';
-import { supabase } from '../../services/supabase';
+import { supabase } from '../../config/supabase';
 import {
   User,
   Mail,

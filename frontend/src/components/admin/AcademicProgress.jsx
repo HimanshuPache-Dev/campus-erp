@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSemester } from '../../context/SemesterContext';
-import { studentsAPI } from '../../services/api';
+import { useDatabaseData } from '../../hooks/useDatabaseData';
 import { Calendar, Loader, AlertCircle } from 'lucide-react';
 
 const AcademicProgress = () => {
@@ -13,45 +13,11 @@ const AcademicProgress = () => {
     isSummer 
   } = useSemester();
 
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { students, loading } = useDatabaseData();
   const [error, setError] = useState(null);
 
   const activeSemesters = getActiveStudentSemesters();
   const yearRange = getAcademicYearRange();
-
-  // Fetch real student data from database
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setLoading(true);
-        console.log('📚 Fetching students for AcademicProgress...');
-        
-        const response = await studentsAPI.getAll();
-        console.log('✅ API Response:', response);
-        console.log('✅ Students data:', response.data);
-        
-        if (response.data && Array.isArray(response.data)) {
-          setStudents(response.data);
-          console.log(`✅ Loaded ${response.data.length} students`);
-        } else {
-          console.log('⚠️ No students data or invalid format');
-          setStudents([]);
-        }
-        
-        setError(null);
-      } catch (err) {
-        console.error('❌ Error fetching students:', err);
-        console.error('❌ Error details:', err.response?.data || err.message);
-        setError('Failed to load student data');
-        setStudents([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStudents();
-  }, [semester, academicYear]);
 
   // Debug: Log students and their semesters
   useEffect(() => {
