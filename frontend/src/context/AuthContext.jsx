@@ -84,6 +84,30 @@ export const AuthProvider = ({ children }) => {
 
       console.log('✅ User authenticated:', users);
       
+      // Check if password reset is required
+      if (users.password_reset_required) {
+        console.log('🔒 Password reset required for user');
+        
+        // Store user data temporarily
+        const userData = {
+          id: users.id,
+          email: users.email,
+          firstName: users.first_name,
+          lastName: users.last_name,
+          role: users.role,
+          department: users.department
+        };
+        
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', 'supabase-session');
+        setUser(userData);
+        
+        toast.info('Please change your password to continue');
+        navigate('/change-password', { replace: true });
+        setLoading(false);
+        return { success: true, passwordResetRequired: true };
+      }
+      
       // Store user data
       const userData = {
         id: users.id,
