@@ -32,6 +32,7 @@ import Reports from './pages/admin/Reports';
 import Results from './pages/admin/Results';
 import Fees from './pages/admin/Fees';
 import AssignFees from './pages/admin/AssignFees';
+import AssignCourses from './pages/admin/AssignCourses';
 import Analytics from './pages/admin/Analytics';
 import Settings from './pages/admin/Settings';
 import Notifications from './pages/admin/Notifications';
@@ -140,6 +141,7 @@ function AppRoutes() {
         <Route path="faculty/:id/edit" element={<div>Edit Faculty</div>} />
         <Route path="courses" element={<Courses />} />
         <Route path="courses/create" element={<CreateCourse />} />
+        <Route path="courses/assign" element={<AssignCourses />} />
         <Route path="alerts" element={<Alerts />} />
         <Route path="courses/:id" element={<div>Course Details</div>} />
         <Route path="courses/:id/edit" element={<CreateCourse />} />

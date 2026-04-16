@@ -129,6 +129,9 @@ const Courses = () => {
           <button onClick={() => navigate('/admin/courses/create')} className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
             <Plus className="h-4 w-4 mr-2" />Create Course
           </button>
+          <button onClick={() => navigate('/admin/courses/assign')} className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+            <Users className="h-4 w-4 mr-2" />Assign Courses
+          </button>
           <button className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
             <Download className="h-4 w-4 mr-2" />Export
           </button>

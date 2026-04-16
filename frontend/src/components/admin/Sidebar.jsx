@@ -24,6 +24,7 @@ const navigation = [
 const quickActions = [
   { name: 'Add Student', href: '/admin/students/add', icon: UserPlus },
   { name: 'Add Faculty', href: '/admin/faculty/add', icon: GraduationCap },
+  { name: 'Assign Courses', href: '/admin/courses/assign', icon: BookOpen },
   { name: 'Reports', href: '/admin/reports', icon: FileText },
   { name: 'Alerts', href: '/admin/alerts', icon: AlertTriangle },
 ];
