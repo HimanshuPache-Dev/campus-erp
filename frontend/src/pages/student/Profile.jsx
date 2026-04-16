@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSemester } from '../../context/SemesterContext';
-import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../config/supabase';
 import {
   User,
   Mail,
@@ -33,83 +34,142 @@ const StudentProfile = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [profileData, setProfileData] = useState(null);
 
-  // Mock student data (view-only)
-  const profileData = {
-    // Personal Information
-    firstName: 'Rahul',
-    middleName: 'Kumar',
-    lastName: 'Sharma',
-    dateOfBirth: '2003-05-15',
-    gender: 'Male',
-    bloodGroup: 'O+',
-    nationality: 'Indian',
-    religion: 'Hindu',
-    caste: 'General',
-    aadharNumber: '1234-5678-9012',
-    panNumber: 'ABCDE1234F',
-    
-    // Contact Information
-    studentEmail: 'rahul.sharma@campus.edu',
-    personalEmail: 'rahul.sharma@gmail.com',
-    studentPhone: '9876543210',
-    alternatePhone: '9876543211',
-    presentAddress: '123 Hostel Block A, University Campus',
-    presentCity: 'Mumbai',
-    presentState: 'Maharashtra',
-    presentPincode: '400001',
-    permanentAddress: '456 Green Park, Main Road',
-    permanentCity: 'Delhi',
-    permanentState: 'Delhi',
-    permanentPincode: '110001',
-    
-    // Academic Information
-    enrollmentNo: 'CP2024001',
-    department: 'Computer Engineering',
-    course: 'B.E. Computer Engineering',
-    currentSemester: 3,
-    batch: '2024-2027',
-    admissionYear: '2024',
-    admissionType: 'Regular',
-    rollNo: '101',
-    
-    // Parent Information
-    fatherName: 'Mr. Rajesh Sharma',
-    fatherOccupation: 'Business',
-    fatherPhone: '9876543212',
-    fatherEmail: 'rajesh.sharma@email.com',
-    motherName: 'Mrs. Sunita Sharma',
-    motherOccupation: 'Teacher',
-    motherPhone: '9876543213',
-    motherEmail: 'sunita.sharma@email.com',
-    
-    // Guardian (if different)
-    guardianName: '',
-    guardianRelation: '',
-    guardianPhone: '',
-    guardianEmail: '',
-    
-    // Bank Information
-    accountHolder: 'Rahul Sharma',
-    bankName: 'State Bank of India',
-    branchName: 'University Branch',
-    accountNumber: '12345678901',
-    ifscCode: 'SBIN0001234',
-    upiId: 'rahul.sharma@oksbi',
-    
-    // Medical Information
-    medicalConditions: 'None',
-    allergies: 'None',
-    emergencyContact: 'Mr. Rajesh Sharma',
-    emergencyRelation: 'Father',
-    emergencyPhone: '9876543212',
-  };
+  // Fetch student data from database
+  useEffect(() => {
+    const fetchStudentData = async () => {
+      if (!user?.id) return;
+
+      try {
+        setLoading(true);
+        
+        // Fetch user data with student_details
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select(`
+            *,
+            student_details (*)
+          `)
+          .eq('id', user.id)
+          .single();
+
+        if (userError) {
+          console.error('Error fetching student data:', userError);
+          toast.error('Failed to load profile data');
+          return;
+        }
+
+        // Map database data to profile format
+        const studentDetails = userData.student_details?.[0] || {};
+        
+        setProfileData({
+          // Personal Information from users table
+          firstName: userData.first_name || '',
+          middleName: '',
+          lastName: userData.last_name || '',
+          dateOfBirth: userData.date_of_birth || '',
+          gender: userData.gender || '',
+          bloodGroup: '',
+          nationality: 'Indian',
+          religion: '',
+          caste: '',
+          aadharNumber: '',
+          panNumber: '',
+          
+          // Contact Information
+          studentEmail: userData.email || '',
+          personalEmail: '',
+          studentPhone: userData.phone || '',
+          alternatePhone: '',
+          presentAddress: userData.address || '',
+          presentCity: '',
+          presentState: '',
+          presentPincode: '',
+          permanentAddress: '',
+          permanentCity: '',
+          permanentState: '',
+          permanentPincode: '',
+          
+          // Academic Information from student_details
+          enrollmentNo: studentDetails.enrollment_number || '',
+          department: userData.department || '',
+          course: `B.E. ${userData.department}` || '',
+          currentSemester: studentDetails.current_semester || 1,
+          batch: `${studentDetails.batch_year}-${parseInt(studentDetails.batch_year) + 3}` || '',
+          admissionYear: studentDetails.batch_year || '',
+          admissionType: 'Regular',
+          rollNo: '',
+          
+          // Parent Information from student_details
+          fatherName: studentDetails.guardian_name || '',
+          fatherOccupation: '',
+          fatherPhone: studentDetails.guardian_phone || '',
+          fatherEmail: studentDetails.guardian_email || '',
+          motherName: '',
+          motherOccupation: '',
+          motherPhone: '',
+          motherEmail: '',
+          
+          // Guardian (if different)
+          guardianName: '',
+          guardianRelation: '',
+          guardianPhone: '',
+          guardianEmail: '',
+          
+          // Bank Information
+          accountHolder: `${userData.first_name} ${userData.last_name}`,
+          bankName: '',
+          branchName: '',
+          accountNumber: '',
+          ifscCode: '',
+          upiId: '',
+          
+          // Medical Information
+          medicalConditions: 'None',
+          allergies: 'None',
+          emergencyContact: studentDetails.guardian_name || '',
+          emergencyRelation: 'Father',
+          emergencyPhone: studentDetails.guardian_phone || '',
+        });
+      } catch (error) {
+        console.error('Error:', error);
+        toast.error('Failed to load profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudentData();
+  }, [user]);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profileData) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-gray-600 dark:text-gray-400">No profile data found</p>
+        </div>
+      </div>
+    );
+  }
 
   const handlePasswordChange = () => {
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
