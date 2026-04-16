@@ -111,29 +111,6 @@ export const AuthProvider = ({ children }) => {
       
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', 'supabase-session');
-        setUser(userData);
-        
-        toast.success('Please change your password to continue', {
-          icon: '🔒',
-          duration: 4000
-        });
-        navigate('/change-password', { replace: true });
-        setLoading(false);
-        return { success: true, passwordResetRequired: true };
-      }
-      
-      // Store user data
-      const userData = {
-        id: users.id,
-        email: users.email,
-        firstName: users.first_name,
-        lastName: users.last_name,
-        role: users.role,
-        department: users.department
-      };
-      
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('token', 'supabase-session'); // Placeholder token
       
       // Update state
       setUser(userData);
