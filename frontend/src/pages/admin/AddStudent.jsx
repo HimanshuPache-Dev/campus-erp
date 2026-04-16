@@ -438,8 +438,7 @@ const AddStudent = () => {
           last_name: formData.personalInfo.lastName,
           role: 'student',
           department: formData.basicInfo.course,
-          is_active: true,
-          password_reset_required: true
+          is_active: true
         })
         .select()
         .single();

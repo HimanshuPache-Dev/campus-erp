@@ -67,50 +67,27 @@ export const AuthProvider = ({ children }) => {
         return { success: false };
       }
 
-      // Simple password validation
-      // Check if user has a custom password (password_reset_required is false)
-      // Otherwise use default passwords or temporary password
+      // Simple password validation - check password_hash
       let isPasswordValid = false;
       
       console.log('🔐 Password validation:', {
-        password_reset_required: users.password_reset_required,
         has_password_hash: !!users.password_hash,
-        has_temporary_password: !!users.temporary_password,
         role: users.role
       });
       
-      if (!users.password_reset_required && users.password_hash) {
-        // User has set their own password
-        isPasswordValid = (password === users.password_hash);
-        console.log('✓ Checking custom password');
-      } else if (users.password_reset_required) {
-        // First-time login - check temporary password OR default password
-        if (users.temporary_password && password === users.temporary_password) {
-          isPasswordValid = true;
-          console.log('✓ Temporary password matched');
-        } else {
-          // Fallback to default passwords for existing users
-          const validPasswords = {
-            'admin': 'admin123',
-            'faculty': 'faculty123',
-            'student': 'student123'
-          };
-          if (password === validPasswords[users.role]) {
-            isPasswordValid = true;
-            console.log('✓ Default password matched');
-          }
-        }
-      } else {
-        // No password_reset_required flag - use default passwords
-        const validPasswords = {
-          'admin': 'admin123',
-          'faculty': 'faculty123',
-          'student': 'student123'
-        };
-        if (password === validPasswords[users.role] || password === users.password_hash) {
-          isPasswordValid = true;
-          console.log('✓ Default/stored password matched');
-        }
+      // Check if password matches password_hash OR default password
+      const defaultPasswords = {
+        'admin': 'admin123',
+        'faculty': 'faculty123',
+        'student': 'student123'
+      };
+      
+      if (users.password_hash && password === users.password_hash) {
+        isPasswordValid = true;
+        console.log('✓ Password hash matched');
+      } else if (password === defaultPasswords[users.role]) {
+        isPasswordValid = true;
+        console.log('✓ Default password matched');
       }
 
       if (!isPasswordValid) {
@@ -122,22 +99,18 @@ export const AuthProvider = ({ children }) => {
 
       console.log('✅ User authenticated:', users);
       
-      // Check if password reset is required
-      if (users.password_reset_required) {
-        console.log('🔒 Password reset required for user');
-        
-        // Store user data temporarily
-        const userData = {
-          id: users.id,
-          email: users.email,
-          firstName: users.first_name,
-          lastName: users.last_name,
-          role: users.role,
-          department: users.department
-        };
-        
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('token', 'supabase-session');
+      // Store user data
+      const userData = {
+        id: users.id,
+        email: users.email,
+        firstName: users.first_name,
+        lastName: users.last_name,
+        role: users.role,
+        department: users.department
+      };
+      
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', 'supabase-session');
         setUser(userData);
         
         toast.success('Please change your password to continue', {
