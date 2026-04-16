@@ -423,9 +423,9 @@ const AddStudent = () => {
       // Create user in Supabase
       const { data: newUser, error: userError } = await supabase
         .from('users')
-        .insert([{
+        .insert({
           email: formData.contactInfo.studentEmail,
-          password_hash: temporaryPassword, // Temporary password
+          password_hash: temporaryPassword,
           first_name: formData.personalInfo.firstName,
           last_name: formData.personalInfo.lastName,
           role: 'student',
@@ -435,9 +435,8 @@ const AddStudent = () => {
           date_of_birth: formData.personalInfo.dateOfBirth,
           gender: formData.personalInfo.gender,
           is_active: true,
-          password_reset_required: true,
-          temporary_password: temporaryPassword
-        }])
+          password_reset_required: true
+        })
         .select()
         .single();
 
@@ -457,7 +456,7 @@ const AddStudent = () => {
       // Create student details
       const { error: detailsError } = await supabase
         .from('student_details')
-        .insert([{
+        .insert({
           user_id: newUser.id,
           enrollment_number: formData.basicInfo.enrollmentNo,
           current_semester: parseInt(formData.basicInfo.semester),
@@ -466,7 +465,7 @@ const AddStudent = () => {
           guardian_phone: formData.parentInfo.fatherPhone,
           guardian_email: formData.parentInfo.fatherEmail,
           admission_date: formData.basicInfo.admissionDate
-        }]);
+        });
 
       if (detailsError) {
         console.error('❌ Error creating student details:', detailsError);
