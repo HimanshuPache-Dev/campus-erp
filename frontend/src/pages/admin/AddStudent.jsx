@@ -419,8 +419,16 @@ const AddStudent = () => {
 
       // Generate temporary password
       const temporaryPassword = generateTemporaryPassword();
+      
+      console.log('📤 Creating user with data:', {
+        email: formData.contactInfo.studentEmail,
+        first_name: formData.personalInfo.firstName,
+        last_name: formData.personalInfo.lastName,
+        role: 'student',
+        department: formData.basicInfo.course
+      });
 
-      // Create user in Supabase
+      // Create user in Supabase - using minimal required fields first
       const { data: newUser, error: userError } = await supabase
         .from('users')
         .insert({
@@ -430,10 +438,6 @@ const AddStudent = () => {
           last_name: formData.personalInfo.lastName,
           role: 'student',
           department: formData.basicInfo.course,
-          phone: formData.contactInfo.studentPhone,
-          address: formData.contactInfo.presentAddress,
-          date_of_birth: formData.personalInfo.dateOfBirth,
-          gender: formData.personalInfo.gender,
           is_active: true,
           password_reset_required: true
         })
@@ -442,16 +446,34 @@ const AddStudent = () => {
 
       if (userError) {
         console.error('❌ Error creating user:', userError);
+        console.error('❌ Error details:', JSON.stringify(userError, null, 2));
         if (userError.code === '23505') {
           toast.error('Email already exists');
         } else {
-          toast.error('Failed to create user: ' + userError.message);
+          toast.error('Failed to create user: ' + (userError.message || userError.hint || 'Unknown error'));
         }
         setSubmitting(false);
         return;
       }
 
       console.log('✅ User created:', newUser);
+
+      // Update user with additional optional fields
+      if (formData.contactInfo.studentPhone || formData.contactInfo.presentAddress || formData.personalInfo.dateOfBirth || formData.personalInfo.gender) {
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            phone: formData.contactInfo.studentPhone || null,
+            address: formData.contactInfo.presentAddress || null,
+            date_of_birth: formData.personalInfo.dateOfBirth || null,
+            gender: formData.personalInfo.gender || null
+          })
+          .eq('id', newUser.id);
+        
+        if (updateError) {
+          console.warn('⚠️ Could not update optional fields:', updateError);
+        }
+      }
 
       // Create student details
       const { error: detailsError } = await supabase
