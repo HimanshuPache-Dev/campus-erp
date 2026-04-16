@@ -73,18 +73,33 @@ const AssignCourses = () => {
 
   const fetchStudentCourses = async (studentId) => {
     try {
-      // First get enrollments
+      // Check if student_enrollments table exists by trying a simple query
       const { data: enrollments, error: enrollError } = await supabase
         .from('student_enrollments')
-        .select('id, course_id, enrollment_date, status')
+        .select('*')
+        .eq('student_id', studentId)
+        .limit(1);
+
+      if (enrollError) {
+        console.warn('student_enrollments table not found or accessible:', enrollError);
+        // If table doesn't exist, show all courses as available
+        setStudentCourses([]);
+        setAvailableCourses(courses);
+        return;
+      }
+
+      // If we get here, table exists - fetch all enrollments
+      const { data: allEnrollments, error: allError } = await supabase
+        .from('student_enrollments')
+        .select('*')
         .eq('student_id', studentId);
 
-      if (enrollError) throw enrollError;
+      if (allError) throw allError;
 
-      // Then get course details for each enrollment
+      // Get course details for each enrollment
       const enrollmentsWithCourses = [];
-      if (enrollments && enrollments.length > 0) {
-        for (const enrollment of enrollments) {
+      if (allEnrollments && allEnrollments.length > 0) {
+        for (const enrollment of allEnrollments) {
           const { data: courseData, error: courseError } = await supabase
             .from('courses')
             .select('id, course_code, course_name, department, semester, credits')
@@ -93,7 +108,10 @@ const AssignCourses = () => {
 
           if (!courseError && courseData) {
             enrollmentsWithCourses.push({
-              ...enrollment,
+              id: enrollment.id,
+              course_id: enrollment.course_id,
+              enrollment_date: enrollment.enrollment_date || new Date().toISOString().split('T')[0],
+              status: enrollment.status || 'active',
               courses: courseData
             });
           }
@@ -102,13 +120,16 @@ const AssignCourses = () => {
 
       setStudentCourses(enrollmentsWithCourses);
 
-      // Filter available courses (not already enrolled)
+      // Filter available courses
       const enrolledCourseIds = enrollmentsWithCourses.map(enrollment => enrollment.course_id);
       const available = courses.filter(course => !enrolledCourseIds.includes(course.id));
       setAvailableCourses(available);
     } catch (error) {
       console.error('Error fetching student courses:', error);
-      toast.error('Failed to load student courses');
+      // Fallback: show all courses as available
+      setStudentCourses([]);
+      setAvailableCourses(courses);
+      toast.error('Could not load enrollments. All courses shown as available.');
     }
   };
 
@@ -123,6 +144,7 @@ const AssignCourses = () => {
     try {
       setSaving(true);
 
+      // Try to insert into student_enrollments table
       const { error } = await supabase
         .from('student_enrollments')
         .insert({
@@ -132,7 +154,15 @@ const AssignCourses = () => {
           status: 'active'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error assigning course:', error);
+        if (error.code === '42P01') {
+          toast.error('Enrollments table not found. Please create the student_enrollments table first.');
+        } else {
+          toast.error('Failed to assign course: ' + error.message);
+        }
+        return;
+      }
 
       toast.success('Course assigned successfully!');
       fetchStudentCourses(selectedStudent.id);
