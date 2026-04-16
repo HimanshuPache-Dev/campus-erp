@@ -1,36 +1,15 @@
-"scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview"
-},
-  "dependencies": {
-    "@hookform/resolvers": "^3.1.0",
-    "@supabase/supabase-js": "^2.99.1",
-    "@tanstack/react-query": "^4.29.0",
-    "axios": "^1.4.0",
-    "date-fns": "^2.30.0",
-    "framer-motion": "^12.36.0",
-    "gsap": "^3.14.2",
-    "lucide-react": "^0.577.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-hook-form": "^7.45.0",
-    "react-hot-toast": "^2.4.1",
-    "react-router-dom": "^6.14.0",
-    "recharts": "^2.7.0",
-    "zod": "^3.21.4"
-  },
-  "devDependencies": {
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "autoprefixer": "^10.4.14",
-    "eslint": "^8.45.0",
-    "eslint-plugin-react": "^7.32.2",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.3",
-    "postcss": "^8.4.24",
-    "tailwindcss": "^3.3.0",
-    "vite": "^5.4.21"
+{
+  "name": "campus-erp",
+  "version": "1.0.0",
+  "description": "Campus ERP System",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview"
   }
 }
