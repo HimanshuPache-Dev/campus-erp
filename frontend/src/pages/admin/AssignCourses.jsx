@@ -73,30 +73,37 @@ const AssignCourses = () => {
 
   const fetchStudentCourses = async (studentId) => {
     try {
-      const { data, error } = await supabase
+      // First get enrollments
+      const { data: enrollments, error: enrollError } = await supabase
         .from('student_enrollments')
-        .select(`
-          id,
-          course_id,
-          enrollment_date,
-          status,
-          courses (
-            id,
-            course_code,
-            course_name,
-            department,
-            semester,
-            credits
-          )
-        `)
+        .select('id, course_id, enrollment_date, status')
         .eq('student_id', studentId);
 
-      if (error) throw error;
+      if (enrollError) throw enrollError;
 
-      setStudentCourses(data || []);
+      // Then get course details for each enrollment
+      const enrollmentsWithCourses = [];
+      if (enrollments && enrollments.length > 0) {
+        for (const enrollment of enrollments) {
+          const { data: courseData, error: courseError } = await supabase
+            .from('courses')
+            .select('id, course_code, course_name, department, semester, credits')
+            .eq('id', enrollment.course_id)
+            .single();
+
+          if (!courseError && courseData) {
+            enrollmentsWithCourses.push({
+              ...enrollment,
+              courses: courseData
+            });
+          }
+        }
+      }
+
+      setStudentCourses(enrollmentsWithCourses);
 
       // Filter available courses (not already enrolled)
-      const enrolledCourseIds = data?.map(enrollment => enrollment.course_id) || [];
+      const enrolledCourseIds = enrollmentsWithCourses.map(enrollment => enrollment.course_id);
       const available = courses.filter(course => !enrolledCourseIds.includes(course.id));
       setAvailableCourses(available);
     } catch (error) {
